@@ -1,0 +1,62 @@
+name: CI/CD Pipeline LyP CRM
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: |
+          lyp-app/server/package-lock.json
+          lyp-app/client/package-lock.json
+
+    - name: Install Dependencies (Server)
+      working-directory: ./lyp-app/server
+      run: npm ci
+
+    - name: Install Dependencies (Client)
+      working-directory: ./lyp-app/client
+      run: npm ci
+
+    - name: Generate Prisma Client
+      working-directory: ./lyp-app/server
+      run: npx prisma generate
+
+    - name: Run Linter (Client)
+      working-directory: ./lyp-app/client
+      run: npm run lint
+
+    - name: Security Audit
+      working-directory: ./lyp-app/server
+      run: npm audit --audit-level=high
+
+    - name: Run Tests (Server)
+      working-directory: ./lyp-app/server
+      run: npm test
+      env:
+        DATABASE_URL: "file:./dev.db"
+        JWT_SECRET: "test-secret"
+
+    - name: Run Tests (Client)
+      working-directory: ./lyp-app/client
+      run: npm test
+
+    - name: Build Frontend
+      working-directory: ./lyp-app/client
+      run: npm run build

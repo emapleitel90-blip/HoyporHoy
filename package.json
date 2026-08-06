@@ -1,0 +1,24 @@
+{
+  "name": "lyp-app",
+  "version": "1.0.0",
+  "description": "Esta aplicación web fue desarrollada para **Lamberti & Pleitel** como sistema de gestión integral de casos jurídicos.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "npx eslint --fix",
+      "npx prettier --write"
+    ]
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0"
+  }
+}

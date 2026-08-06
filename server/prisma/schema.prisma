@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Studio {
+  id        String   @id @default(uuid())
+  name      String
+  cuit      String   @unique
+  address   String?
+  phone     String?
+  email     String?
+  status    String   @default("ACTIVE")
+  package   String   @default("BASIC")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cases     Case[]
+  clients   Client[]
+  users     User[]
+}
+
+model User {
+  id            String         @id @default(uuid())
+  name          String
+  email         String         @unique
+  password      String
+  role          String         @default("OPERATOR")
+  studioId      String?
+  lastLogin     DateTime?
+  createdAt     DateTime       @default(now())
+  deletedAt     DateTime?
+  assignedCases Case[]         @relation("AssignedLawyer")
+  createdCases  Case[]         @relation("CreatedBy")
+  notifications Notification[]
+  studio        Studio?        @relation(fields: [studioId], references: [id])
+}
+
+model Case {
+  id               String          @id @default(uuid())
+  caseNumber       String          @unique
+  title            String
+  clientId         String?
+  clientName       String?
+  description      String?
+  details          String?
+  status           String          @default("OPEN")
+  priority         String          @default("MEDIUM")
+  fuero            String?
+  score            Int?
+  studioId         String?
+  createdById      String
+  assignedLawyerId String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  deletedAt        DateTime?
+  assignedLawyer   User?           @relation("AssignedLawyer", fields: [assignedLawyerId], references: [id])
+  createdBy        User            @relation("CreatedBy", fields: [createdById], references: [id])
+  studio           Studio?         @relation(fields: [studioId], references: [id])
+  client           Client?         @relation(fields: [clientId], references: [id])
+  files            CaseFile[]
+  deadlines        Deadline[]
+  expenses         Expense[]
+  notifications    Notification[]
+  timelineEvents   TimelineEvent[]
+}
+
+model CaseFile {
+  id        String   @id @default(uuid())
+  name      String
+  url       String
+  caseId    String
+  createdAt DateTime @default(now())
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model Deadline {
+  id          String   @id @default(uuid())
+  title       String
+  dueDate     DateTime
+  isCompleted Boolean  @default(false)
+  notes       String?
+  caseId      String
+  createdAt   DateTime @default(now())
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model TimelineEvent {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  eventDate   DateTime
+  type        String   @default("GENERAL")
+  caseId      String
+  createdAt   DateTime @default(now())
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model Client {
+  id         String   @id @default(uuid())
+  type       String   @default("PERSONA_FISICA")
+  firstName  String
+  lastName   String?
+  documentId String?
+  email      String?
+  phone      String?
+  address    String?
+  studioId   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  cases      Case[]
+  studio     Studio?  @relation(fields: [studioId], references: [id])
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  description String
+  amount      Float
+  type        String   @default("OTROS")
+  status      String   @default("PENDING")
+  receiptUrl  String?
+  caseId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  type      String   @default("INFO")
+  isRead    Boolean  @default(false)
+  userId    String
+  caseId    String?
+  createdAt DateTime @default(now())
+  case      Case?    @relation(fields: [caseId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model FormConfig {
+  id        String   @id @default(uuid())
+  scope     String   @unique @default("global") // "global" or studioId
+  sections  String   // JSON string with section config
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
