@@ -32,7 +32,7 @@ const StudioList = () => {
     const fetchStudios = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             const { data } = await axios.get(api.studios.list, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -48,7 +48,7 @@ const StudioList = () => {
         e.preventDefault();
         try {
             setLoading(true);
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             const { data } = await axios.post(api.studios.list, formData, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -71,7 +71,7 @@ const StudioList = () => {
 
     const toggleStatus = async (id, currentStatus) => {
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             const newStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
             await axios.put(`${api.studios.list}/${id}/status`, { status: newStatus }, {
                 headers: { Authorization: `Bearer ${token}` }

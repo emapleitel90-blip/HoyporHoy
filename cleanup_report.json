@@ -1,6 +1,8 @@
 {
-  "timestamp": "2026-03-19T00:02:08.990Z",
+  "timestamp": "2026-08-24T22:55:53.230Z",
   "espacioLiberadoMB": 0,
   "archivosBorrados": [],
-  "incongruenciasDetectadas": []
+  "incongruenciasDetectadas": [
+    "Archivo de ambiente suelto detectado: C:\\Users\\Usuario\\Desktop\\antigravity lyp\\HoyporHoy\\.env.tester.incongruente. Puede causar problemas (Ej. Prisma) cruzando variables de entorno en el Tester."
+  ]
 }

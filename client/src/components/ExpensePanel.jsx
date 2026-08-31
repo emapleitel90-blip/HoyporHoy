@@ -14,7 +14,7 @@ export const ExpensePanel = ({ caseId, studioId }) => {
 
     const fetchExpenses = async () => {
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             const { data } = await axios.get(api.expenses.byCase(caseId), {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -48,7 +48,7 @@ export const ExpensePanel = ({ caseId, studioId }) => {
             }
 
             // 2. Crear gasto en la base de datos
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             await axios.post(api.expenses.create(caseId), {
                 ...formData,
                 receiptUrl

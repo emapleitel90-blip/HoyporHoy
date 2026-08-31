@@ -21,7 +21,7 @@ const Settings = () => {
 
     const fetchConfig = async () => {
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             const { data } = await axios.get(api.formConfig.base, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -37,7 +37,7 @@ const Settings = () => {
 
     const handleSave = async () => {
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             await axios.put(api.formConfig.base, { sections: config.sections }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -51,7 +51,7 @@ const Settings = () => {
     const handleReset = async () => {
         if (!window.confirm('¿Estás seguro de resetear a los valores por defecto? Se perderán los cambios personalizados.')) return;
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             const { data } = await axios.post(`${api.formConfig.base}/reset`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });

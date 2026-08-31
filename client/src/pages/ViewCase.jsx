@@ -103,14 +103,24 @@ const ViewCase = () => {
     useEffect(() => {
         const fetchCase = async () => {
             try {
-                const token = localStorage.getItem('token');
+                const token = localStorage.getItem('lyp_token');
                 const { data } = await axios.get(api.cases.get(id), {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setCaseItem(data);
             } catch (err) {
-                setError('Error al cargar el caso');
                 console.error(err);
+                if (err.response) {
+                    const status = err.response.status;
+                    if (status === 401) setError('Tu sesión venció. Volvé a iniciar sesión.');
+                    else if (status === 403) setError('No tenés permisos para acceder a este expediente.');
+                    else if (status === 404) setError('El expediente no existe o ya no está disponible.');
+                    else setError('Ocurrió un error al cargar el expediente.');
+                } else if (err.request) {
+                    setError('No se pudo conectar con el servidor.');
+                } else {
+                    setError('Ocurrió un error al cargar el expediente.');
+                }
             } finally {
                 setLoading(false);
             }
@@ -120,7 +130,7 @@ const ViewCase = () => {
 
     const handleGenerateDocument = async () => {
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             const response = await axios.post(api.documents.generate, { caseId: id, templateType: 'cedula' }, {
                 headers: { Authorization: `Bearer ${token}` },
                 responseType: 'blob'
@@ -144,7 +154,27 @@ const ViewCase = () => {
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
         </div>
     );
-    if (error) return <div className="text-red-500 p-4">{error}</div>;
+    
+    if (error) return (
+        <div className="flex flex-col items-center justify-center py-20">
+            <div className="bg-red-50 text-red-800 p-6 rounded-xl border border-red-200 max-w-md w-full text-center shadow-sm">
+                <h3 className="text-lg font-bold mb-2">Acceso Denegado / Error</h3>
+                <p className="mb-6">{error}</p>
+                <div className="flex justify-center gap-4">
+                    <Link to="/cases" className="px-4 py-2 bg-white text-gray-700 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
+                        Volver a expedientes
+                    </Link>
+                    <button 
+                        onClick={() => { setLoading(true); setError(null); setCaseItem(null); }} 
+                        className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors"
+                    >
+                        Reintentar
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+
     if (!caseItem) return <div>Caso no encontrado</div>;
 
     let details = {};

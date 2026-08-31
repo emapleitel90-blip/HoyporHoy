@@ -11,7 +11,7 @@ export const DeadlinePanel = ({ caseId }) => {
 
     const fetchDeadlines = async () => {
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             const { data } = await axios.get(api.deadlines.byCase(caseId), {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -30,7 +30,7 @@ export const DeadlinePanel = ({ caseId }) => {
     const handleAdd = async (e) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             await axios.post(api.deadlines.create(caseId), {
                 title: newTitle,
                 dueDate: newDate,
@@ -46,7 +46,7 @@ export const DeadlinePanel = ({ caseId }) => {
 
     const toggleStatus = async (deadline) => {
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             await axios.put(api.deadlines.update(deadline.id), {
                 isCompleted: !deadline.isCompleted,
             }, { headers: { Authorization: `Bearer ${token}` } });

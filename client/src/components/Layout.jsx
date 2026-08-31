@@ -13,7 +13,8 @@ import {
     Settings,
     ChevronRight,
     Bell,
-    BookOpen
+    BookOpen,
+    CalendarCheck
 } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 
@@ -23,8 +24,9 @@ const Layout = () => {
     const location = useLocation();
 
     const navItems = [
+        { name: 'Mi jornada', path: '/mi-jornada', icon: CalendarCheck },
         { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        { name: 'Gestión de Casos', path: '/cases', icon: Briefcase },
+        { name: 'Gestión de Expedientes', path: '/cases', icon: Briefcase },
         { name: 'Ayuda / Manual', path: '/help', icon: BookOpen },
         { name: 'Configuración', path: '/settings', icon: Settings },
         ...(user?.role === 'SUPER_ADMIN' ? [{ name: 'SaaS Estudios', path: '/studios', icon: Building2 }] : []),

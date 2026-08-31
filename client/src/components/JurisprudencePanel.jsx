@@ -40,7 +40,7 @@ export const JurisprudencePanel = ({ caseId, caseFuero }) => {
         setError(null);
         setResults([]);
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             const { data } = await axios.post(api.jurisprudence.search, {
                 q: query,
                 fuero: caseFuero || 'Civil',

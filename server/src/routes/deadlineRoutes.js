@@ -5,13 +5,16 @@ import {
     updateDeadline,
     deleteDeadline,
     getUpcomingDeadlines,
+    getMyDay,
 } from '../controllers/deadlineController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 // Rutas de plazos (Requieren autenticación)
+// IMPORTANTE: las rutas fijas van ANTES de las rutas con :id para evitar conflictos
 router.get('/upcoming', protect, getUpcomingDeadlines);
+router.get('/my-day', protect, getMyDay);
 
 router.route('/:id')
     .put(protect, updateDeadline)
@@ -24,3 +27,4 @@ router.route('/case/:id')
     .post(protect, createDeadline);
 
 export default router;
+

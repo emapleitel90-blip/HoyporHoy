@@ -22,6 +22,7 @@ export const api = {
     },
     deadlines: {
         upcoming: `${API_URL}/api/deadlines/upcoming`,
+        myDay: `${API_URL}/api/deadlines/my-day`,
         byCase: (id) => `${API_URL}/api/deadlines/case/${id}`,
         create: (id) => `${API_URL}/api/deadlines/case/${id}`,
         update: (id) => `${API_URL}/api/deadlines/${id}`,

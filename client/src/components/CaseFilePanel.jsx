@@ -15,7 +15,7 @@ export const CaseFilePanel = ({ caseId, studioId, initialFiles = [] }) => {
 
         setUploading(true);
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             // Mocking the upload URL since the backend doesn't handle multipart yet
             const mockUrl = `https://storage.lyp.com/cases/${caseId}/${encodeURIComponent(file.name)}`;
             
@@ -41,7 +41,7 @@ export const CaseFilePanel = ({ caseId, studioId, initialFiles = [] }) => {
         if (!window.confirm('¿Está seguro de eliminar este archivo?')) return;
 
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             await axios.delete(api.cases.deleteFile(fileId), {
                 headers: { Authorization: `Bearer ${token}` }
             });

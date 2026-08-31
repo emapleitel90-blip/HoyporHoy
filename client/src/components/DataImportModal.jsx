@@ -89,7 +89,7 @@ export const DataImportModal = ({ isOpen, onClose, onImportSuccess }) => {
                 return;
             }
 
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             const res = await axios.post(api.cases.import, { cases: mappedCases }, {
                 headers: { Authorization: `Bearer ${token}` }
             });

@@ -9,7 +9,7 @@ export const NotificationBell = () => {
 
     const fetchNotifications = async () => {
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('lyp_token');
             if (!token) return;
             const { data } = await axios.get(api.notifications.list, {
                 headers: { Authorization: `Bearer ${token}` }

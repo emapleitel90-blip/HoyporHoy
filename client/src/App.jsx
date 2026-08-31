@@ -12,6 +12,7 @@ import ViewCase from './pages/ViewCase';
 import Notifications from './pages/Notifications';
 import Settings from './pages/Settings';
 import Help from './pages/Help';
+import MyDay from './pages/MyDay';
 
 const ProtectedRoute = () => {
     const { user, loading } = useAuth();
@@ -31,6 +32,7 @@ function App() {
                             <Route element={<Layout />}>
                                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                                 <Route path="/dashboard" element={<Dashboard />} />
+                                <Route path="/mi-jornada" element={<MyDay />} />
                                 <Route path="/cases" element={<CaseList />} />
                                 <Route path="/cases/new" element={<CreateCase />} />
                                 <Route path="/cases/:id" element={<ViewCase />} />

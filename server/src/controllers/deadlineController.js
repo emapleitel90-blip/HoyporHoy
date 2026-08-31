@@ -102,3 +102,112 @@ export const getUpcomingDeadlines = async (req, res, next) => {
         next(err);
     }
 };
+
+// GET /api/deadlines/my-day  — "Mi jornada": vencidos, hoy, próximos 7 días
+// Multi-tenancy: se filtra por case.studioId del usuario autenticado.
+// No acepta studioId desde el frontend.
+export const getMyDay = async (req, res, next) => {
+    try {
+        // Construir el filtro de tenant seguro (solo desde el token, nunca del frontend)
+        const tenantFilter = {};
+        if (req.user.role !== 'SUPER_ADMIN') {
+            tenantFilter.case = { studioId: req.user.studioId, deletedAt: null };
+        } else {
+            tenantFilter.case = { deletedAt: null };
+        }
+
+        // Calcular los límites de fecha en zona horaria de Córdoba
+        // Usamos offsets manuales para no agregar dependencias (America/Argentina/Cordoba = UTC-3)
+        const nowUtc = new Date();
+        const cordobaOffsetMs = -3 * 60 * 60 * 1000;
+        const nowCordoba = new Date(nowUtc.getTime() + cordobaOffsetMs);
+
+        // Inicio y fin del día de hoy en Córdoba
+        const todayStartCordoba = new Date(nowCordoba);
+        todayStartCordoba.setHours(0, 0, 0, 0);
+        const todayEndCordoba = new Date(nowCordoba);
+        todayEndCordoba.setHours(23, 59, 59, 999);
+
+        // Convertir a UTC para consultar la BD
+        const todayStartUtc = new Date(todayStartCordoba.getTime() - cordobaOffsetMs);
+        const todayEndUtc = new Date(todayEndCordoba.getTime() - cordobaOffsetMs);
+
+        // Límite de 7 días futuros (desde mañana)
+        const in7daysEndCordoba = new Date(todayEndCordoba);
+        in7daysEndCordoba.setDate(in7daysEndCordoba.getDate() + 7);
+        const in7daysEndUtc = new Date(in7daysEndCordoba.getTime() - cordobaOffsetMs);
+
+        // Campos a incluir del expediente (datos mínimos, no exponer info sensible)
+        const caseInclude = {
+            select: {
+                id: true,
+                caseNumber: true,
+                title: true,
+                fuero: true,
+                studioId: true,
+                assignedLawyer: { select: { id: true, name: true } },
+            },
+        };
+
+        // Consultas en paralelo: atrasados, hoy, próximos 7 días
+        const [overdue, today, upcoming] = await Promise.all([
+            // Atrasados: vencimiento anterior a hoy, no completados
+            prisma.deadline.findMany({
+                where: {
+                    isCompleted: false,
+                    dueDate: { lt: todayStartUtc },
+                    ...tenantFilter,
+                },
+                include: { case: caseInclude },
+                orderBy: { dueDate: 'asc' },
+            }),
+            // Hoy: vencimiento entre inicio y fin del día
+            prisma.deadline.findMany({
+                where: {
+                    isCompleted: false,
+                    dueDate: { gte: todayStartUtc, lte: todayEndUtc },
+                    ...tenantFilter,
+                },
+                include: { case: caseInclude },
+                orderBy: { dueDate: 'asc' },
+            }),
+            // Próximos 7 días: desde mañana hasta 7 días
+            prisma.deadline.findMany({
+                where: {
+                    isCompleted: false,
+                    dueDate: { gt: todayEndUtc, lte: in7daysEndUtc },
+                    ...tenantFilter,
+                },
+                include: { case: caseInclude },
+                orderBy: { dueDate: 'asc' },
+            }),
+        ]);
+
+        // Formatear respuesta con datos mínimos
+        const formatDeadline = (d) => ({
+            id: d.id,
+            title: d.title,
+            dueDate: d.dueDate,
+            notes: d.notes,
+            caseId: d.caseId,
+            caseNumber: d.case?.caseNumber || null,
+            caseTitle: d.case?.title || null,
+            fuero: d.case?.fuero || null,
+            assignedLawyer: d.case?.assignedLawyer?.name || null,
+        });
+
+        res.json({
+            overdue: overdue.map(formatDeadline),
+            today: today.map(formatDeadline),
+            upcoming: upcoming.map(formatDeadline),
+            counts: {
+                overdue: overdue.length,
+                today: today.length,
+                upcoming: upcoming.length,
+                total: overdue.length + today.length + upcoming.length,
+            },
+        });
+    } catch (err) {
+        next(err);
+    }
+};
