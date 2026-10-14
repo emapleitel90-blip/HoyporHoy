@@ -1,0 +1,11 @@
+# Environment — never commit real credentials
+.env
+
+# Runtime
+node_modules/
+uploads/
+
+# Build artefacts
+*.db-journal
+
+*.db

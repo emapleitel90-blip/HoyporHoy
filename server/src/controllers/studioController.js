@@ -1,5 +1,6 @@
 import prisma from '../utils/prismaClient.js';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 
 export const getStudios = async (req, res) => {
     try {
@@ -27,11 +28,10 @@ export const createStudio = async (req, res) => {
             return res.status(400).json({ message: 'Ya existe un estudio con ese CUIT' });
         }
 
-        // Crear el estudio y su admin inicial en una transacción
+        // Generate a cryptographically random temporary password (never hardcoded)
+        const tempPassword = randomBytes(12).toString('base64url');
         const salt = await bcrypt.genSalt(10);
-        // Default password for new studios
-        const defaultPassword = 'changeme123';
-        const hashedPassword = await bcrypt.hash(defaultPassword, salt);
+        const hashedPassword = await bcrypt.hash(tempPassword, salt);
 
         const result = await prisma.$transaction(async (tx) => {
             const newStudio = await tx.studio.create({
@@ -54,12 +54,14 @@ export const createStudio = async (req, res) => {
                 }
             });
 
-            return { studio: newStudio, adminEmail: newAdmin.email, defaultPassword };
+            return { studio: newStudio, adminEmail: newAdmin.email };
         });
 
-        res.status(201).json(result);
+        // Return temp password once in the response — SUPER_ADMIN must relay it securely.
+        // It is not persisted in plaintext and will not appear in future responses.
+        res.status(201).json({ ...result, tempPassword });
     } catch (error) {
-        console.error(error);
+        console.error('[createStudio]', error.message);
         res.status(400).json({ message: 'Error al crear el estudio' });
     }
 };

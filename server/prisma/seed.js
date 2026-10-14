@@ -4,6 +4,13 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
+    // ⚠️  DEV/STAGING ONLY — Never run this seed in production.
+    // All seeded accounts use known-weak passwords for local testing.
+    if (process.env.NODE_ENV === 'production') {
+        console.error('[SEED] Seed script is disabled in production environments. Exiting.');
+        process.exit(1);
+    }
+
     console.log('Sembrando base de datos...');
 
     const salt = await bcrypt.genSalt(10);

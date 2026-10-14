@@ -1,5 +1,12 @@
-# Reglas de Selección de Modelos
+# Agent Guidelines & Model Routing
 
-- **Manager View (Orquestador Multi-Agente)**: Utilizar Gemini 3.5 Flash como base por su velocidad de orquestación.
-- **Agentes de Lógica Crítica (RLS, Auth, Esquemas de DB)**: Utilizar Claude Sonnet 4.6 para escribir lógica crítica.
-- **Deep Think (Decisiones de Arquitectura)**: Utilizar Claude Opus 4.8 para decisiones de arquitectura y análisis complejos.
+## Execution Rules
+- **Minimal Changes:** Make localized, minimal changes. Reuse existing components and dependencies.
+- **Tenant Isolation & Security:** Preserve all tenant isolation (`studioId`) and security policies across queries and mutations.
+- **Token Economy:** Read only task-relevant files. Run targeted validation commands. Keep summaries concise.
+- **Source Code Safety:** Do not perform unrelated refactoring. Preserve all existing functionality.
+
+## Model Selection & Routing
+- **Flash (Default):** Manager view / orchestration, standard development, frontend UI, standard backend endpoints, and routine testing (e.g. Gemini Flash).
+- **Advanced (Critical Logic):** Authentication, tenant isolation, and database schema migrations (e.g. Claude Sonnet / Gemini Pro).
+- **Deep Think (Escalation Only):** Major architectural decisions and complex analysis (e.g. Claude Opus).

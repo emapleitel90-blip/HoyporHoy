@@ -20,6 +20,25 @@ import { checkUpcomingDeadlines } from './skills/deadlineAgent.js';
 
 dotenv.config();
 
+// ── Startup Security Guard ────────────────────────────────────────────────────
+// Refuse to start if JWT_SECRET is absent or is the known insecure placeholder.
+const INSECURE_JWT_DEFAULTS = [
+    'secret_key_super_segura_cambiar_en_produccion',
+    'your_jwt_secret_here',
+    'changeme',
+    'secret',
+    'REPLACE_WITH_GENERATED_SECRET',
+];
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret?.trim() || INSECURE_JWT_DEFAULTS.includes(jwtSecret.trim())) {
+    console.error(
+        '[FATAL] JWT_SECRET is missing or is set to a known insecure default. ' +
+        'Generate a secure secret: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))" ' +
+        'and set it in your environment. Refusing to start.'
+    );
+    process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
