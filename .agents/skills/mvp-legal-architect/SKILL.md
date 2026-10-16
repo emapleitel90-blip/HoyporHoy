@@ -3,35 +3,40 @@ name: mvp-legal-architect
 description: Define alcance, prioridades y criterios de aceptación del MVP de HoyporHoy para estudios jurídicos argentinos. Usar al planificar funcionalidades, ordenar roadmap, evaluar ideas o preparar pilotos comerciales.
 ---
 
-# Arquitectura de producto MVP — HoyporHoy
+# Arquitectura funcional del MVP — HoyporHoy
 
 ## Propósito
-Construir un espacio operativo compartido para abogados, no un catálogo de formularios. La demostración debe recorrer un trabajo jurídico real de principio a fin.
+Transformar HoyporHoy en el entorno de trabajo cotidiano de un estudio, no en un formulario extenso. **Nuestro carril es producto, experiencia y funcionalidad.** Bartolito es responsable del análisis de seguridad y revisión de cambios técnicos sensibles.
 
-## Flujo mínimo demostrable
-1. ADMIN crea o administra usuarios del estudio; LAWYER y OPERATOR ingresan según permisos.
-2. Se registra un consultante y un expediente con carátula, fuero, jurisdicción, número judicial si existe y abogado responsable.
-3. Se asigna una tarea/escrito a un colaborador; se visualiza el avance y se revisa el resultado.
-4. Se adjunta y recupera documentación autorizada; se genera un borrador .docx vinculado al expediente.
-5. Se agenda un vencimiento con fuente/fecha verificadas y se consulta desde Mi Jornada.
-6. ADMIN obtiene una vista consolidada del estudio sin revelar datos de otros tenants.
+## Flujo de valor
+1. El abogado abre la plataforma y consulta Mi Jornada.
+2. Encuentra o crea un expediente con carátula, fuero, cliente, responsable y estado.
+3. Asigna una tarea o borrador al abogado junior.
+4. El junior actualiza avance, adjunta trabajo y lo envía a revisión.
+5. El titular aprueba o devuelve con observaciones. Se conserva la trazabilidad.
+6. Ambos consultan documentación y plazos asociados al expediente.
 
-## Prioridades
-- **P0 seguridad bloqueante:** `studioId` derivado del usuario autenticado, acceso seguro a archivos, secretos, autorización y tests de aislamiento auténticos. No demos con expedientes reales antes de resolverlo.
-- **P1 flujo de valor:** expediente rápido, responsable, tareas/revisión, documentos y agenda vinculados.
-- **P2 experiencia comercial:** panel claro, datos ficticios, recorrido de demo, onboarding corto, responsive.
-- **Fuera del MVP:** integraciones judiciales automáticas, cálculo jurídico definitivo de plazos, facturación completa, portal de clientes, chat en tiempo real e IA autónoma que formule actos procesales.
+## Prioridad de desarrollo funcional
+- **F1 — ficha y carga rápida:** expediente claro y recuperable, sin obligar a completar 13 secciones.
+- **F2 — colaboración (primer módulo nuevo):** tareas por expediente, estados, asignación, revisión y actividad.
+- **F3 — jornada integrada:** vencimientos judiciales y tareas internas diferenciados, responsables visibles.
+- **F4 — documentos:** generar borradores DOCX, adjuntarlos y revisarlos desde el expediente.
+- **F5 — demo:** UX desktop/móvil, datos ficticios y recorrido repetible para abogados.
+- **Más adelante:** portal clientes, integraciones judiciales, facturación completa, chat simultáneo, IA autónoma.
 
-## Método de trabajo
-1. Inspeccionar componentes, endpoints, esquema y tests existentes antes de proponer entidades nuevas.
-2. Redactar historia de usuario: «Como [rol], quiero [acción] para [resultado]».
-3. Dibujar recorrido en pantalla y contratos de API; definir permisos por rol y `studioId`.
-4. Separar reutilización, bug, nuevo desarrollo y futura fase.
-5. Especificar criterios de aceptación visibles, casos vacíos, errores y tests.
-6. Implementar en incrementos demostrables; nunca presentar una pantalla simulada como módulo operativo.
+## Acuerdo sobre seguridad
+No se asume que seguridad está resuelta; Bartolito revisa `tenant-security` y las pruebas de aislamiento. Nosotros **no** alteramos middleware de protección, reglas de roles o filtrado de estudio como atajo. Todo endpoint/modelo nuevo deberá respetar `studioId`, `protect` y los permisos existentes y ser revisado antes de un piloto real. Desarrollo y demostración inicial solo con datos ficticios.
+
+## Método
+1. Comprobar el código existente antes de proponer cambios; leer `docs/MVP_FUNCIONAL.md`.
+2. Formular historia de usuario (rol, acción, resultado), flujo UI y criterio de aceptación observable.
+3. Diseñar el cambio mínimo en componentes, endpoints y entidades, reutilizando `Case`, `TimelineEvent`, `Deadline` y `CaseFile` cuando corresponda.
+4. Separar claramente tarea interna de actuación judicial y plazo procesal.
+5. Identificar cambios de Prisma/permisos para revisión técnica de Bartolito antes de implementarlos.
+6. Implementar por incrementos funcionales y validarlos con datos sintéticos; no vender una pantalla simulada como funcionalidad real.
 
 ## Entregable
-Tabla breve: necesidad del estudio, estado actual verificado, brecha, prioridad, archivos afectados, esfuerzo relativo, dependencias y prueba de aceptación. Señalar «propuesta» vs. «implementado».
+Para cada función: pantalla, comportamiento, dato guardado, archivos exactos, requerimiento de migración, tests y demo de aceptación. Marcar PROYECTADO / IMPLEMENTADO / VERIFICADO.
 
-## Base técnica
-Mantener Node 18+/Express ESM/Prisma (SQLite dev; PostgreSQL prod), React 18/Vite/Tailwind, JWT y Vitest/Supertest. Respetar `.agent/AGENTS.md` y las skills de seguridad, expedientes y QA.
+## Stack invariable
+Node 18+/Express ESM, Prisma SQLite dev/PostgreSQL prod, React 18/Vite/Tailwind, JWT, docx, Vitest/Supertest. Seguir `.agent/AGENTS.md` sin introducir dependencias o refactors innecesarios.
