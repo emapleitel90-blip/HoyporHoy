@@ -1,47 +1,57 @@
 # Skills de Antigravity — MVP HoyporHoy
 
-Estas skills son **instrucciones para el agente de desarrollo**, no módulos funcionales instalados en la aplicación. Se activan por descripción de la tarea; no requieren dependencias ni migración por sí mismas. Consultar primero `.agent/AGENTS.md`, el código de la rama y el estado real de tests.
+Estas skills son **instrucciones para el agente de desarrollo**, no funciones ya instaladas. Consultar primero `.agent/AGENTS.md`, el código de la rama y el estado real de las pruebas.
 
-| Skill | Cuándo usarla | Prioridad |
+## División de responsabilidades
+
+- **Nosotros (producto y funcionalidad):** definir el uso cotidiano de un estudio jurídico, diseñar flujos, construir y probar pantallas, expedientes, tareas, supervisión, agenda y documentos.
+- **Bartolito (seguridad y revisión técnica):** revisar autorización, multi-tenancy, protección de archivos, credenciales, riesgos de producción y cambios sensibles.
+- **Regla compartida:** no desactivar ni eludir las protecciones existentes. Los cambios funcionales que impliquen permisos, endpoints o migraciones deben quedar identificados para revisión de Bartolito. Usar solo datos ficticios durante el desarrollo; pilotos con datos reales requieren aprobación de seguridad previa.
+
+## Skills disponibles
+
+| Skill | Cuándo usarla | Responsable principal |
 |---|---|---|
-| `skill-creator` | Crear o mejorar otras habilidades | Infraestructura |
-| `mvp-legal-architect` | Definir flujo del producto, alcance y backlog | P1 |
-| `expedientes-core` | CRUD, consulta, ficha y ciclo de expedientes | P1 |
-| `team-workflow` | Asignar, ejecutar, revisar tareas del equipo | P1 |
-| `deadline-agenda` | Agenda, vencimientos, Mi Jornada | P1 |
-| `legal-documents` | Adjuntos protegidos y borradores DOCX | P1 |
-| `tenant-security` | Autenticación, aislamiento, archivos, secretos | P0 bloqueante |
-| `legal-ux` | Interfaz para abogados, móvil y usabilidad | P2 |
-| `jurisprudence-assistant` | Investigación asistida con fuentes verificables | P2 |
-| `mvp-qa` | Pruebas de seguridad y flujo real | P0/P1 |
-| `demo-pilot` | Recorrido comercial con datos ficticios, onboarding | P2 |
+| `skill-creator` | Crear y mejorar skills | Nosotros |
+| `mvp-legal-architect` | Definir funcionalidad y alcance del MVP | Nosotros |
+| `expedientes-core` | Registro, búsqueda y ficha de expedientes | Nosotros |
+| `team-workflow` | Tareas, juniors y supervisión | Nosotros |
+| `deadline-agenda` | Agenda, vencimientos, Mi Jornada | Nosotros |
+| `legal-documents` | Borradores DOCX y adjuntos | Nosotros / revisión técnica |
+| `legal-ux` | Interfaz de escritorio y móvil | Nosotros |
+| `jurisprudence-assistant` | Investigación asistida con fuentes | Nosotros |
+| `demo-pilot` | Demo y onboarding con datos ficticios | Nosotros |
+| `mvp-qa` | Pruebas funcionales y de aislamiento | Compartido |
+| `tenant-security` | Auditoría de acceso, secretos y uploads | Bartolito |
 
-## Ya existe como código de aplicación
+## Prioridad de **desarrollo funcional**
 
-- `server/src/skills/deadlineAgent.js`: agente de alertas de vencimientos.
-- `server/src/skills/documentRedactor.js`: generación de archivos DOCX.
+1. `expedientes-core`: ficha central del expediente y alta rápida.
+2. `team-workflow`: asignar trabajo a junior, registrar avance, enviar a revisión, aprobar o solicitar corrección. **Primer módulo nuevo a diseñar e implementar.**
+3. `deadline-agenda`: vincular tareas y vencimientos a Mi Jornada, sin mezclar plazos procesales con fechas internas.
+4. `legal-documents`: vincular archivos y borradores a tareas/expedientes.
+5. `legal-ux` + `demo-pilot`: navegación clara, móvil y guion de demo con datos ficticios.
+6. `jurisprudence-assistant`: investigación orientativa, identificando fuentes verificadas.
+
+**Carril paralelo — Bartolito:** `tenant-security` y pruebas de aislamiento de `mvp-qa`. Sus hallazgos bloquean el uso con datos reales, pero no impiden diseñar/prototipar flujos con datos ficticios.
+
+## Módulos que ya existen
+
+- `server/src/skills/deadlineAgent.js`: alertas de vencimientos.
+- `server/src/skills/documentRedactor.js`: generación DOCX.
 - `server/src/skills/fileOptimizer.js`: limpieza de temporales.
-- `server/src/skills/saijSearcher.js`: sugerencias con IA sobre jurisprudencia (no implica recuperación de fallos verificados).
+- `server/src/skills/saijSearcher.js`: sugerencias IA sin verificación directa de fallos.
 
-Las skills de agente **orientan mejoras sobre estos módulos** y no los duplican.
+No duplicar estos módulos. Para definición inicial de funcionalidades consultar `docs/MVP_FUNCIONAL.md`.
 
-## Orden recomendado de ejecución
+## Criterio de demo
 
-1. `tenant-security` + `mvp-qa`: reparar y demostrar aislamiento por estudio, archivos privados y secretos. **Sin expedientes reales antes de pasar P0.**
-2. `expedientes-core`: ficha y carga rápida, clientes y asignación segura.
-3. `team-workflow`: tarea y revisión por abogado titular.
-4. `deadline-agenda` + `legal-documents`: flujo integrado al expediente.
-5. `legal-ux` + `demo-pilot`: demo guiada usable y con datos ficticios.
-6. `jurisprudence-assistant`: sólo resultados con origen etiquetado y sin citas inventadas.
+Un abogado titular puede encontrar un expediente, asignar un trabajo a un junior, seguir su avance, revisar y aprobar un borrador, consultar documentos y vencimientos sin salir de la plataforma. Solo presentar como «operativo» lo implementado y probado.
 
-## Criterio de MVP vendible
+**Estado de esta entrega:** documentación de skills y planificación funcional; no cambia código ejecutable, dependencias ni schema.
 
-Un abogado entra, encuentra el expediente, asigna trabajo a un junior, revisa un borrador, identifica vencimientos y consulta documentos sin salir del sistema y sin ver información de otros estudios.
+## Instrucción breve para Antigravity
 
-**Estado de esta entrega:** solo skills Markdown para desarrollo. No hay implementación, migración, dependencias ni ejecución de tests por la incorporación de estos archivos.
+«Aplicá `mvp-legal-architect` y `team-workflow`. Leé `docs/MVP_FUNCIONAL.md`, inspeccioná el código real y proponé el primer incremento de tareas y revisión sobre expedientes. Empezá por diseño, endpoints, pantallas y aceptación; no modifiques seguridad ni migres Prisma sin revisión».
 
-## Uso en Antigravity
-
-Dar una instrucción como: «Aplicá la skill `tenant-security` y auditá el aislamiento real de casos, plazos, adjuntos y documentos; proponé parches mínimos y tests antes de modificar código».
-
-Evitar modificaciones a `main` o cambios de base de datos sin revisar primero una rama y su diff. Consultar `ESTADO_HOYPORHOY.md` para pendientes conocidos, verificando vigencia.
+Mantener cambios en rama de trabajo y revisar diff antes de mezclar a `develop/hoyporhoy-2.0`.
