@@ -1,0 +1,11 @@
+import express from 'express';
+import { protect } from '../middleware/authMiddleware.js';
+import { getCaseFollowUps, getMyFollowUps, getFollowUpsToReview, createFollowUp, updateFollowUp, actOnFollowUp } from '../controllers/followUpController.js';
+const router = express.Router();
+router.use(protect);
+router.get('/mine', getMyFollowUps);
+router.get('/to-review', getFollowUpsToReview);
+router.route('/case/:caseId').get(getCaseFollowUps).post(createFollowUp);
+router.patch('/:id', updateFollowUp);
+router.post('/:id/actions', actOnFollowUp);
+export default router;

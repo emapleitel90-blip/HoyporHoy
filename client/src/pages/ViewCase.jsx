@@ -7,6 +7,10 @@ import { DeadlinePanel } from '../components/DeadlinePanel';
 import { ExpensePanel } from '../components/ExpensePanel';
 import { CaseFilePanel } from '../components/CaseFilePanel';
 import { JurisprudencePanel } from '../components/JurisprudencePanel';
+import { TaskPanel } from '../components/TaskPanel';
+import { FollowUpPanel } from '../components/FollowUpPanel';
+import { FeePanel } from '../components/FeePanel';
+import { WrittenDocumentsPanel } from '../components/WrittenDocumentsPanel';
 
 const STATUS_LABELS = {
     OPEN: 'Abierto', CLOSED: 'Cerrado', IN_REVIEW: 'En Revisión',
@@ -99,16 +103,22 @@ const ViewCase = () => {
     const [caseItem, setCaseItem] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [retry, setRetry] = useState(0);
 
     useEffect(() => {
+        let cancelled = false;
+        setCaseItem(null); setError(null); setLoading(true);
         const fetchCase = async () => {
             try {
                 const token = localStorage.getItem('lyp_token');
                 const { data } = await axios.get(api.cases.get(id), {
                     headers: { Authorization: `Bearer ${token}` }
                 });
+                if (cancelled) return;
+                if (data?.id !== id) throw new Error('Expediente recibido inválido');
                 setCaseItem(data);
             } catch (err) {
+                if (cancelled) return;
                 console.error(err);
                 if (err.response) {
                     const status = err.response.status;
@@ -122,11 +132,12 @@ const ViewCase = () => {
                     setError('Ocurrió un error al cargar el expediente.');
                 }
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
         fetchCase();
-    }, [id]);
+        return () => { cancelled = true; };
+    }, [id, retry]);
 
     const handleGenerateDocument = async () => {
         try {
@@ -149,8 +160,8 @@ const ViewCase = () => {
     };
 
 
-    if (loading) return (
-        <div className="flex items-center justify-center h-64">
+    if (loading || (caseItem && caseItem.id !== id)) return (
+        <div role="status" aria-label="Cargando expediente" className="flex items-center justify-center h-64">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
         </div>
     );
@@ -165,7 +176,7 @@ const ViewCase = () => {
                         Volver a expedientes
                     </Link>
                     <button 
-                        onClick={() => { setLoading(true); setError(null); setCaseItem(null); }} 
+                        onClick={() => setRetry(value => value + 1)}
                         className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors"
                     >
                         Reintentar
@@ -401,21 +412,31 @@ const ViewCase = () => {
             )}
 
             {/* Application Skills Panels */}
+            <div className="bg-white border border-gray-100 rounded-xl p-5">
+                <InfoRow label="Abogado responsable" value={caseItem.assignedLawyer?.name || (Object.prototype.hasOwnProperty.call(details, 'assignedLawyerId') ? 'Sin asignar' : details.abogadoAsignado || 'Sin asignar')} />
+            </div>
+            <TaskPanel caseItem={caseItem} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <DeadlinePanel caseId={caseItem.id} />
                 </div>
                 <div>
-                    <ExpensePanel caseId={caseItem.id} studioId={caseItem.studioId} />
+                    <ExpensePanel caseId={caseItem.id} onReceiptSaved={file => setCaseItem(current => current?.id === file.caseId
+                        ? { ...current, files: [...(current.files || []).filter(item => item.id !== file.id), file] } : current)} />
                 </div>
             </div>
             
+            <FollowUpPanel caseItem={caseItem} />
             <CaseFilePanel 
                 caseId={caseItem.id} 
                 studioId={caseItem.studioId} 
                 initialFiles={caseItem.files} 
+                onFilesChange={files => setCaseItem(current => ({ ...current, files }))}
             />
 
+            <FeePanel caseId={caseItem.id} onReceiptSaved={file => setCaseItem(current => current?.id === file.caseId
+                ? { ...current, files: [...(current.files || []).filter(item => item.id !== file.id), file] } : current)} />
+            <WrittenDocumentsPanel caseId={caseItem.id} />
             <JurisprudencePanel caseId={caseItem.id} caseFuero={caseItem.fuero || details.fuero} />
 
             {/* Metadata */}

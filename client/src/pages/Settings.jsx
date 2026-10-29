@@ -1,41 +1,67 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
 import { 
-    Settings as SettingsIcon, Save, RotateCcw, 
-    Check, ChevronRight, Plus, Trash2, 
+    Save, RotateCcw,
+    ChevronRight, Plus, Trash2,
     Type, ListChecks, Activity, Layout as LayoutIcon,
     AlertCircle
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
+const readConfig = data => {
+    if (!data || !Array.isArray(data.sections) || !data.sections.every(section =>
+        section && typeof section.id === 'string' && section.id.length > 0 &&
+        typeof section.title === 'string' && typeof section.type === 'string' &&
+        typeof section.enabled === 'boolean' &&
+        (section.description === undefined || typeof section.description === 'string') &&
+        (section.items === undefined || (Array.isArray(section.items) && section.items.every(item => typeof item === 'string'))) &&
+        (section.fields === undefined || (Array.isArray(section.fields) && section.fields.every(field =>
+            field && typeof field.label === 'string' && typeof field.type === 'string')))
+    ) || new Set(data.sections.map(section => section.id)).size !== data.sections.length) {
+        throw new Error('Respuesta de configuración inválida');
+    }
+    return data;
+};
+
 const Settings = () => {
     const [config, setConfig] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeSectionId, setActiveSectionId] = useState(null);
+    const [error, setError] = useState(null);
+    const [busy, setBusy] = useState(false);
     const { showToast } = useToast();
 
-    useEffect(() => {
-        fetchConfig();
-    }, []);
-
-    const fetchConfig = async () => {
+    const fetchConfig = useCallback(async (signal) => {
+        setLoading(true);
+        setError(null);
         try {
             const token = localStorage.getItem('lyp_token');
             const { data } = await axios.get(api.formConfig.base, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` }, signal,
             });
-            setConfig(data);
-            if (data.sections.length > 0) setActiveSectionId(data.sections[0].id);
+            if (signal?.aborted) return;
+            const config = readConfig(data);
+            setConfig(config);
+            setActiveSectionId(config.sections[0]?.id ?? null);
         } catch (error) {
+            if (signal?.aborted) return;
             console.error('Error fetching config:', error);
-            showToast('Error al cargar la configuración', 'error');
+            setError('No se pudo cargar la configuración. Intentá de nuevo.');
         } finally {
-            setLoading(false);
+            if (!signal?.aborted) setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        fetchConfig(controller.signal);
+        return () => controller.abort();
+    }, [fetchConfig]);
 
     const handleSave = async () => {
+        if (!config || busy) return;
+        setBusy(true);
         try {
             const token = localStorage.getItem('lyp_token');
             await axios.put(api.formConfig.base, { sections: config.sections }, {
@@ -45,20 +71,29 @@ const Settings = () => {
         } catch (error) {
             console.error('Error saving config:', error);
             showToast('Error al guardar', 'error');
+        } finally {
+            setBusy(false);
         }
     };
 
     const handleReset = async () => {
+        if (busy) return;
         if (!window.confirm('¿Estás seguro de resetear a los valores por defecto? Se perderán los cambios personalizados.')) return;
+        setBusy(true);
         try {
             const token = localStorage.getItem('lyp_token');
             const { data } = await axios.post(`${api.formConfig.base}/reset`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setConfig(data);
+            const config = readConfig(data);
+            setConfig(config);
+            setActiveSectionId(current => config.sections.some(section => section.id === current)
+                ? current : config.sections[0]?.id ?? null);
             showToast('Configuración reseteada', 'success');
         } catch (error) {
             showToast('Error al resetear', 'error');
+        } finally {
+            setBusy(false);
         }
     };
 
@@ -95,8 +130,18 @@ const Settings = () => {
     };
 
     if (loading) return (
-        <div className="flex items-center justify-center h-64">
+        <div role="status" aria-label="Cargando configuración" className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        </div>
+    );
+
+    if (error || !config) return (
+        <div role="alert" className="bg-red-50 border border-red-200 rounded-2xl p-6 space-y-4">
+            <h2 className="text-lg font-bold text-slate-900">Configuración del Sistema</h2>
+            <p className="text-red-700">{error || 'La configuración no está disponible.'}</p>
+            <button onClick={() => fetchConfig()} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold">
+                Reintentar
+            </button>
         </div>
     );
 
@@ -113,6 +158,7 @@ const Settings = () => {
                 <div className="flex items-center space-x-3">
                     <button 
                         onClick={handleReset}
+                        disabled={busy}
                         className="flex items-center space-x-2 bg-white border border-slate-200 text-slate-600 px-5 py-2.5 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-all"
                     >
                         <RotateCcw size={18} />
@@ -120,6 +166,7 @@ const Settings = () => {
                     </button>
                     <button 
                         onClick={handleSave}
+                        disabled={busy}
                         className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-2xl font-bold text-sm shadow-lg shadow-indigo-600/20 transition-all hover:scale-105"
                     >
                         <Save size={18} />
@@ -128,7 +175,11 @@ const Settings = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {config.sections.length === 0 && (
+                <p role="status" className="text-slate-600">No hay módulos configurados. Podés restablecer los valores por defecto.</p>
+            )}
+
+            <fieldset disabled={busy} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 {/* Sidebar: Section List */}
                 <div className="lg:col-span-4 space-y-2">
                     <div className="bg-white rounded-[24px] border border-slate-200 p-4 shadow-sm">
@@ -188,7 +239,7 @@ const Settings = () => {
                                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Descripción del Módulo</label>
                                         <input 
                                             type="text" 
-                                            value={activeSection.description} 
+                                            value={activeSection.description || ''}
                                             onChange={(e) => updateSection(activeSection.id, 'description', e.target.value)}
                                             className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                                         />
@@ -254,7 +305,7 @@ const Settings = () => {
                         </div>
                     )}
                 </div>
-            </div>
+            </fieldset>
         </div>
     );
 };

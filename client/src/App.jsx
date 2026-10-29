@@ -1,18 +1,20 @@
-import React from 'react';
+import React, { lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
 import Layout from './components/Layout';
-import CaseList from './pages/CaseList';
-import StudioList from './pages/StudioList';
-import CreateCase from './pages/CreateCase';
-import ViewCase from './pages/ViewCase';
-import Notifications from './pages/Notifications';
-import Settings from './pages/Settings';
-import Help from './pages/Help';
-import MyDay from './pages/MyDay';
+import RouteContent from './components/RouteContent';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const CaseList = lazy(() => import('./pages/CaseList'));
+const StudioList = lazy(() => import('./pages/StudioList'));
+const CreateCase = lazy(() => import('./pages/CreateCase'));
+const ViewCase = lazy(() => import('./pages/ViewCase'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Help = lazy(() => import('./pages/Help'));
+const MyDay = lazy(() => import('./pages/MyDay'));
 
 const ProtectedRoute = () => {
     const { user, loading } = useAuth();
@@ -30,6 +32,7 @@ function App() {
 
                         <Route element={<ProtectedRoute />}>
                             <Route element={<Layout />}>
+                              <Route element={<RouteContent />}>
                                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                                 <Route path="/dashboard" element={<Dashboard />} />
                                 <Route path="/mi-jornada" element={<MyDay />} />
@@ -41,6 +44,7 @@ function App() {
                                 <Route path="/notifications" element={<Notifications />} />
                                 <Route path="/settings" element={<Settings />} />
                                 <Route path="/help" element={<Help />} />
+                              </Route>
                             </Route>
                         </Route>
                     </Routes>

@@ -1,4 +1,5 @@
 import prisma from '../utils/prismaClient.js';
+import { participantScope, REVIEWER_ROLES } from '../utils/caseAccess.js';
 
 // Helper: build tenant-scoped where clause.
 // SUPER_ADMIN can see everything; everyone else is restricted to their studio.
@@ -86,11 +87,27 @@ export const createCase = async (req, res) => {
         const { title, clientName, details, description, studioId, assignedLawyerId, fuero, score } = req.body;
 
         const detailsString = typeof details === 'object' ? JSON.stringify(details) : details;
-
         const caseNumber = `CAS-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-        // Determine studioId: priority: body > authenticated user
-        const finalStudioId = studioId || req.user.studioId || null;
+        // StudioId is strictly derived from session unless SUPER_ADMIN
+        const finalStudioId = req.user.role === 'SUPER_ADMIN' ? (studioId || null) : (req.user.studioId || null);
+
+        let validAssignedLawyerId = null;
+        if (assignedLawyerId) {
+            if (typeof assignedLawyerId !== 'string') return res.status(400).json({ message: 'Responsable inválido' });
+            const targetUser = await prisma.user.findFirst({
+                where: {
+                    AND: [
+                        participantScope({ studioId: finalStudioId, createdById: req.user.id }),
+                        { id: assignedLawyerId, role: { in: REVIEWER_ROLES } },
+                    ],
+                }
+            });
+            if (!targetUser) {
+                return res.status(400).json({ message: 'El abogado asignado no existe, está inactivo o no pertenece a este estudio' });
+            }
+            validAssignedLawyerId = targetUser.id;
+        }
 
         const newCase = await prisma.case.create({
             data: {
@@ -103,9 +120,13 @@ export const createCase = async (req, res) => {
                 fuero: fuero || null,
                 score: score ? Number(score) : null,
                 studioId: finalStudioId,
-                assignedLawyerId: assignedLawyerId || null,
+                assignedLawyerId: validAssignedLawyerId,
                 createdById: req.user.id
             },
+            include: {
+                assignedLawyer: { select: { id: true, name: true, email: true, role: true } },
+                createdBy: { select: { id: true, name: true, email: true } }
+            }
         });
         res.status(201).json(newCase);
     } catch (error) {
@@ -121,7 +142,7 @@ export const updateCase = async (req, res) => {
 
         const existingCase = await prisma.case.findUnique({ where: { id } });
 
-        if (!existingCase) {
+        if (!existingCase || existingCase.deletedAt) {
             return res.status(404).json({ message: 'Case not found' });
         }
 
@@ -133,6 +154,24 @@ export const updateCase = async (req, res) => {
                 }
             } else if (existingCase.createdById !== req.user.id) {
                 return res.status(403).json({ message: 'No autorizado para actualizar este expediente independiente' });
+            }
+        }
+
+        let validAssignedLawyerId = undefined;
+        if (assignedLawyerId !== undefined && assignedLawyerId !== existingCase.assignedLawyerId) {
+            if (assignedLawyerId === null || assignedLawyerId === '') {
+                validAssignedLawyerId = null;
+            } else {
+                if (typeof assignedLawyerId !== 'string') return res.status(400).json({ message: 'Responsable inválido' });
+                const targetUser = await prisma.user.findFirst({
+                    where: {
+                        AND: [participantScope(existingCase), { id: assignedLawyerId, role: { in: REVIEWER_ROLES } }],
+                    }
+                });
+                if (!targetUser) {
+                    return res.status(400).json({ message: 'El abogado asignado no existe, está inactivo o no pertenece a este estudio' });
+                }
+                validAssignedLawyerId = targetUser.id;
             }
         }
 
@@ -148,8 +187,12 @@ export const updateCase = async (req, res) => {
                 status,
                 fuero: fuero || undefined,
                 score: score !== undefined ? Number(score) : undefined,
-                assignedLawyerId: assignedLawyerId || undefined,
+                assignedLawyerId: validAssignedLawyerId,
             },
+            include: {
+                assignedLawyer: { select: { id: true, name: true, email: true, role: true } },
+                createdBy: { select: { id: true, name: true, email: true } }
+            }
         });
 
         res.json(updatedCase);
@@ -166,14 +209,14 @@ export const getCaseById = async (req, res) => {
             include: {
                 studio: true,
                 assignedLawyer: { select: { id: true, name: true, email: true } },
-                createdBy: { select: { id: true, name: true, email: true } },
+                createdBy: { select: { id: true, name: true, email: true, role: true } },
                 files: true,
                 deadlines: { orderBy: { dueDate: 'asc' } },
                 timelineEvents: { orderBy: { eventDate: 'asc' } }
             }
         });
 
-        if (!caseItem) return res.status(404).json({ message: 'Case not found' });
+        if (!caseItem || caseItem.deletedAt) return res.status(404).json({ message: 'Case not found' });
 
         // If NOT SUPER_ADMIN, check if the user belongs to the studio OR is the creator if independent
         if (req.user.role !== 'SUPER_ADMIN') {
@@ -193,66 +236,7 @@ export const getCaseById = async (req, res) => {
     }
 };
 
-export const addCaseFile = async (req, res) => {
-    try {
-        const { id: caseId } = req.params;
-        const { name, url } = req.body;
-
-        if (!name || !url) return res.status(400).json({ message: 'Name and URL are required' });
-
-        const caseItem = await prisma.case.findUnique({ where: { id: caseId } });
-        if (!caseItem) return res.status(404).json({ message: 'Case not found' });
-
-        if (req.user.role !== 'SUPER_ADMIN') {
-            if (caseItem.studioId) {
-                if (caseItem.studioId !== req.user.studioId) {
-                    return res.status(403).json({ message: 'No autorizado' });
-                }
-            } else if (caseItem.createdById !== req.user.id) {
-                return res.status(403).json({ message: 'No autorizado' });
-            }
-        }
-
-        const newFile = await prisma.caseFile.create({
-            data: { name, url, caseId }
-        });
-
-        res.status(201).json(newFile);
-    } catch (error) {
-        console.error('[addCaseFile]', error);
-        res.status(500).json({ message: 'Error al agregar archivo' });
-    }
-};
-
-export const deleteCaseFile = async (req, res) => {
-    try {
-        const { fileId } = req.params;
-
-        const file = await prisma.caseFile.findUnique({
-            where: { id: fileId },
-            include: { case: true }
-        });
-
-        if (!file) return res.status(404).json({ message: 'Archivo no encontrado' });
-
-        if (req.user.role !== 'SUPER_ADMIN') {
-            if (file.case.studioId) {
-                if (file.case.studioId !== req.user.studioId) {
-                    return res.status(403).json({ message: 'No autorizado' });
-                }
-            } else if (file.case.createdById !== req.user.id) {
-                return res.status(403).json({ message: 'No autorizado' });
-            }
-        }
-
-        await prisma.caseFile.delete({ where: { id: fileId } });
-
-        res.json({ message: 'Archivo eliminado' });
-    } catch (error) {
-        console.error('[deleteCaseFile]', error);
-        res.status(500).json({ message: 'Error al eliminar archivo' });
-    }
-};
+export { addCaseFile, deleteCaseFile } from './caseFileController.js';
 
 export const importCases = async (req, res) => {
     try {

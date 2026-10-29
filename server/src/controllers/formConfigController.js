@@ -142,7 +142,7 @@ const DEFAULT_SECTIONS = [
         type: 'standard',
         fields: [
             { name: 'honorarios', label: 'Modalidad de Honorarios', type: 'select', options: ['Cuota Litis', 'Monto Fijo', 'Abono', 'Regulados'] },
-            { name: 'abogadoAsignado', label: 'Abogado Responsable', type: 'text' },
+            { name: 'assignedLawyerId', label: 'Abogado Responsable', type: 'select' },
             { name: 'notasInternas', label: 'Notas Administrativas', type: 'textarea', fullWidth: true },
         ]
     }

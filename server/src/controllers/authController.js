@@ -9,7 +9,12 @@ const generateToken = (id, role) => {
 };
 
 export const register = async (req, res) => {
-    const { name, email, password, role, studioId } = req.body;
+    const { name, email, password } = req.body;
+
+    // Studio membership and privileged roles are managed by authenticated admins.
+    if (Object.hasOwn(req.body, 'role') || Object.hasOwn(req.body, 'studioId')) {
+        return res.status(400).json({ message: 'El registro público no permite asignar roles ni estudios' });
+    }
 
     try {
         const userExists = await prisma.user.findUnique({
@@ -28,8 +33,8 @@ export const register = async (req, res) => {
                 name,
                 email,
                 password: hashedPassword,
-                role: role || 'OPERATOR',
-                studioId: studioId || null,
+                role: 'OPERATOR',
+                studioId: null,
             },
         });
 
@@ -39,6 +44,7 @@ export const register = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
+                studioId: user.studioId,
                 token: generateToken(user.id, user.role),
             });
         } else {

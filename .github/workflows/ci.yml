@@ -1,0 +1,70 @@
+name: LyP - Validación
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22.x, 24.x]
+    env:
+      DATABASE_URL: file:./ci.db
+      JWT_SECRET: ci-only-test-secret-not-for-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+      - name: Instalar servidor
+        run: npm ci
+        working-directory: server
+      - name: Instalar cliente
+        run: npm ci
+        working-directory: client
+      - name: Generar cliente Prisma
+        run: npx --no-install prisma generate
+        working-directory: server
+      - name: Revisar código del cliente
+        run: npm run lint
+        working-directory: client
+      - name: Probar servidor
+        run: npm test
+        working-directory: server
+      - name: Probar cliente
+        run: npm test
+        working-directory: client
+      - name: Compilar cliente
+        run: npm run build
+        working-directory: client
+
+  audit-dependencies:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [server, client]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: ${{ matrix.project }}
+      - run: npm audit --audit-level=high
+        working-directory: ${{ matrix.project }}

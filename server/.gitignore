@@ -4,6 +4,7 @@
 # Runtime
 node_modules/
 uploads/
+storage/
 
 # Build artefacts
 *.db-journal

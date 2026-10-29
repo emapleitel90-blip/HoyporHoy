@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
 import { Clock, Plus, CheckCircle, Circle } from 'lucide-react';
@@ -9,7 +9,7 @@ export const DeadlinePanel = ({ caseId }) => {
     const [newTitle, setNewTitle] = useState('');
     const [newDate, setNewDate] = useState('');
 
-    const fetchDeadlines = async () => {
+    const fetchDeadlines = useCallback(async () => {
         try {
             const token = localStorage.getItem('lyp_token');
             const { data } = await axios.get(api.deadlines.byCase(caseId), {
@@ -21,11 +21,11 @@ export const DeadlinePanel = ({ caseId }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [caseId]);
 
     useEffect(() => {
         if (caseId) fetchDeadlines();
-    }, [caseId]);
+    }, [caseId, fetchDeadlines]);
 
     const handleAdd = async (e) => {
         e.preventDefault();
@@ -103,7 +103,7 @@ export const DeadlinePanel = ({ caseId }) => {
                                             {d.title}
                                         </p>
                                         <p className="text-xs text-gray-500">
-                                            Vence: {new Date(d.dueDate).toLocaleDateString('es-AR')}
+                                            Vence: {new Date(d.dueDate).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Cordoba' })}
                                         </p>
                                     </div>
                                 </div>

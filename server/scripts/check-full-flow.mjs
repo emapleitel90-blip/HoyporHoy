@@ -1,0 +1,55 @@
+// Run only against verify-client-browser.mjs --full-flow. Never uses the normal app DB.
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+const base='http://127.0.0.1:4317/api';
+async function call(token,path,method='GET',body,expected=200){
+    const multipart=body instanceof FormData;
+    const res=await fetch(base+path,{method,headers:{...(token?{Authorization:'Bearer '+token}:{}),...(!multipart&&body?{'Content-Type':'application/json'}:{})},body:body?(multipart?body:JSON.stringify(body)):undefined});
+    const data=await res.json();assert.equal(res.status,expected,`${method} ${path}: ${JSON.stringify(data)}`);return data;
+}
+async function login(email){return (await call(null,'/auth/login','POST',{email,password:'PruebaNavegador2026!'})).token;}
+const lawyer=await login('navegador@example.invalid'),operator=await login('operador.navegador@example.invalid');
+assert.equal((await call(lawyer,'/cases/browser-case')).caseNumber,'PRUEBA-NAVEGADOR');
+let follow=await call(lawyer,'/follow-ups/case/browser-case','POST',{kind:'DOCUMENT',title:'Documento ficticio para prueba integral',ownerId:'browser-operator',dueDate:'2026-10-29T21:00:00.000Z'},201);
+assert.equal(follow.dueDate,'2026-10-29T21:00:00.000Z');
+assert.ok((await call(operator,'/follow-ups/mine')).some(x=>x.id===follow.id));
+const fileData=new FormData();fileData.append('file',new Blob([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWX0AAAAASUVORK5CYII=','base64')],{type:'image/png'}),'documento-ficticio.png');
+const file=await call(operator,'/cases/browser-case/files','POST',fileData,201);
+follow=await call(operator,`/follow-ups/${follow.id}/actions`,'POST',{action:'RECEIVE',version:follow.updatedAt,fileId:file.id});
+assert.equal(follow.status,'RECEIVED');
+await call(operator,`/follow-ups/${follow.id}/actions`,'POST',{action:'VERIFY',version:follow.updatedAt},403);
+assert.ok((await call(lawyer,'/follow-ups/to-review')).some(x=>x.id===follow.id));
+follow=await call(lawyer,`/follow-ups/${follow.id}/actions`,'POST',{action:'VERIFY',version:follow.updatedAt});
+assert.equal(follow.status,'VERIFIED');assert.equal(follow.events.length,3);
+assert.ok(!(await call(operator,'/follow-ups/mine')).some(x=>x.id===follow.id));
+console.log('PASS documentación: archivo privado, recepción, permisos, verificación e historial');
+let task=await call(lawyer,'/tasks/case/browser-case','POST',{title:'Escrito de prueba integral',instructions:'Texto ficticio',assigneeId:'browser-operator',reviewerId:'browser-lawyer',requiresWriting:true},201);
+assert.ok((await call(operator,'/tasks/my-tasks')).some(x=>x.id===task.id));
+task=await call(operator,`/tasks/${task.id}/start`,'PUT',{});
+let writing=await call(operator,'/writings/case/browser-case','POST',{title:'Escrito integral ficticio',content:'Versión uno de prueba',notes:'Prueba integral',requestId:randomUUID()},201);
+task=await call(operator,`/tasks/${task.id}/submit`,'PUT',{notes:'Primera entrega',writingVersionId:writing.selectedVersion.id,requestId:randomUUID()});
+let submission=task.events.findLast(x=>x.action==='SUBMITTED');
+assert.ok((await call(lawyer,'/tasks/to-review')).some(x=>x.id===task.id));
+task=await call(lawyer,`/tasks/${task.id}/review`,'PUT',{decision:'REVISION_REQUESTED',notes:'Ajustar texto ficticio',submissionId:submission.id,requestId:randomUUID()});
+task=await call(operator,`/tasks/${task.id}/start`,'PUT',{});
+writing=await call(operator,`/writings/${writing.id}/versions`,'POST',{title:'Escrito integral ficticio',content:'Versión dos corregida',notes:'Corrección solicitada',expectedVersion:1,requestId:randomUUID()},201);
+const approvedId=writing.selectedVersion.id;
+task=await call(operator,`/tasks/${task.id}/submit`,'PUT',{notes:'Segunda entrega',writingVersionId:approvedId,requestId:randomUUID()});
+submission=task.events.findLast(x=>x.action==='SUBMITTED');
+writing=await call(operator,`/writings/${writing.id}/versions`,'POST',{title:'Escrito integral ficticio',content:'Versión tres posterior',notes:'Texto posterior sin aprobar',expectedVersion:2,requestId:randomUUID()},201);
+task=await call(lawyer,`/tasks/${task.id}/review`,'PUT',{decision:'APPROVED',notes:'Segunda entrega aprobada',submissionId:submission.id,requestId:randomUUID()});
+assert.equal(task.status,'APPROVED');assert.equal(task.events.find(x=>x.action==='APPROVED').writingVersionId,approvedId);
+assert.notEqual(approvedId,writing.selectedVersion.id);
+assert.ok(!(await call(lawyer,'/tasks/to-review')).some(x=>x.id===task.id));
+console.log('PASS escrito: entrega v1, correcciones, entrega v2, v3 posterior y aprobación exclusiva de v2');
+let fees=await call(lawyer,'/fees/case/browser-case','POST',{description:'Acuerdo ficticio integral',installments:[{amount:'100.25',dueDate:'2026-10-29'}]},201);
+const quota=fees.installments[0].id;
+assert.ok((await call(lawyer,'/fees/upcoming')).some(x=>x.id===quota));
+fees=await call(lawyer,`/fees/installments/${quota}/payments`,'POST',{amount:'40.10',paidAt:'2026-10-29',notes:'Pago ficticio parcial',requestId:randomUUID()});
+assert.equal(fees.balanceCents,6015);
+fees=await call(lawyer,`/fees/installments/${quota}/payments`,'POST',{amount:'60.15',paidAt:'2026-10-29',notes:'Cancelación ficticia',requestId:randomUUID()});
+assert.equal(fees.balanceCents,0);assert.equal(fees.installments[0].payments.length,2);
+assert.ok(!(await call(lawyer,'/fees/upcoming')).some(x=>x.id===quota));
+assert.equal((await call(await login('navegador@example.invalid'),'/fees/case/browser-case')).balanceCents,0);
+console.log('PASS cobranza: 100,25 - 40,10 - 60,15 = 0; pendiente retirado e historial conservado tras nuevo ingreso');
+console.log('COMPLETE: circuito API real con dos roles, persistencia y controles de permiso');

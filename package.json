@@ -4,13 +4,14 @@
   "description": "Esta aplicación web fue desarrollada para **Lamberti & Pleitel** como sistema de gestión integral de casos jurídicos.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm --prefix server test && npm --prefix client test",
+    "lint": "npm --prefix client run lint",
+    "build": "npm --prefix client run build",
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "npx eslint --fix",
-      "npx prettier --write"
+    "client/src/**/*.{js,jsx}": [
+      "npm --prefix client run lint --"
     ]
   },
   "keywords": [],

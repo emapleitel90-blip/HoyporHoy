@@ -1,154 +1,135 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
-import { BookOpen, Search, Sparkles, KeyRound } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 
-export const JurisprudencePanel = ({ caseId, caseFuero }) => {
+const portals = [
+    ['SAIJ', 'https://www.saij.gob.ar/buscador/'],
+    ['Poder Judicial de Córdoba', 'https://www.justiciacordoba.gob.ar/Jurisprudencia/home'],
+];
+const empty = { titulo: '', tribunal: '', fecha: '', url: '', extracto: '' };
+const headers = () => ({ Authorization: 'Bearer ' + localStorage.getItem('lyp_token') });
+const searchable = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+export const JurisprudencePanel = ({ caseId }) => <CaseReferences key={caseId} caseId={caseId} />;
+
+function CaseReferences({ caseId }) {
+    const [references, setReferences] = useState([]);
+    const [form, setForm] = useState(empty);
+    const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
+    const [saveError, setSaveError] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [notice, setNotice] = useState('');
+    const [retry, setRetry] = useState(0);
     const [query, setQuery] = useState('');
-    const [apiKey, setApiKey] = useState('');
-    const [results, setResults] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [showKeyInput, setShowKeyInput] = useState(false);
+    const [origin, setOrigin] = useState('ALL');
+    const visible = references.filter(item => {
+        const official = item.verification === 'USER_PROVIDED';
+        return (origin === 'ALL' || (origin === 'OFFICIAL' ? official : !official)) &&
+            searchable([item.titulo,item.tribunal,item.fecha,item.source,item.extracto,item.title,item.description].join(' ')).includes(searchable(query.trim()));
+    });
 
-    // Cargar apiKey guardada localmente para no pedirla siempre
     useEffect(() => {
-        const savedKey = localStorage.getItem('lyp_openai_key');
-        if (savedKey) {
-            setApiKey(savedKey);
-        } else {
-            setShowKeyInput(true);
-        }
-    }, []);
-
-    const handleSaveKey = () => {
-        localStorage.setItem('lyp_openai_key', apiKey);
-        setShowKeyInput(false);
-    };
-
-    const handleSearch = async (e) => {
-        e.preventDefault();
-        if (!query || query.length < 3) return;
-        if (!apiKey) {
-            setError('Debes configurar tu API Key de Copilot/OpenAI para usar la IA Legal.');
-            setShowKeyInput(true);
-            return;
-        }
-
+        let cancelled = false;
         setLoading(true);
-        setError(null);
-        setResults([]);
+        setLoadError('');
+        axios.get(api.jurisprudence.byCase(caseId), { headers: headers() })
+            .then(({ data }) => {
+                if (!Array.isArray(data)) throw new Error('Respuesta inválida');
+                if (!cancelled) setReferences(data);
+            })
+            .catch(() => { if (!cancelled) setLoadError('No se pudieron cargar las referencias.'); })
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, [caseId, retry]);
+
+    const save = async (event) => {
+        event.preventDefault();
+        if (saving) return;
+        setSaving(true);
+        setSaveError('');
+        setNotice('');
         try {
-            const token = localStorage.getItem('lyp_token');
-            const { data } = await axios.post(api.jurisprudence.search, {
-                q: query,
-                fuero: caseFuero || 'Civil',
-                apiKey: apiKey
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            
-            if (data.success) {
-                setResults(data.results);
-            } else {
-                setError(data.message);
-            }
-        } catch (err) {
-            console.error('Error fetching jurisprudence', err);
-            setError(err.response?.data?.message || 'Fallo de conexión al consultar la IA Legal.');
-        } finally {
-            setLoading(false);
-        }
+            const { data } = await axios.post(api.jurisprudence.save,
+                { caseId, insightData: form }, { headers: headers() });
+            if (!data?.id || data.verification !== 'USER_PROVIDED') throw new Error('Respuesta inválida');
+            setReferences(previous => [data, ...previous]);
+            setForm(empty);
+            setNotice('Referencia guardada en el expediente.');
+        } catch (error) {
+            setSaveError(error.response?.data?.message || 'No se pudo guardar. Conservamos los datos para reintentar.');
+        } finally { setSaving(false); }
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-6">
-            <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-white flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-indigo-600" />
-                    <h3 className="text-base font-semibold text-gray-900">Asistente IA Jurisprudencial (SAIJ)</h3>
-                </div>
-                <button 
-                    onClick={() => setShowKeyInput(!showKeyInput)}
-                    className="text-xs text-gray-500 hover:text-indigo-600 flex items-center gap-1"
-                >
-                    <KeyRound className="w-3 h-3" /> Configurar API
+        <section className="bg-white rounded-xl border border-gray-200 p-6 mt-6 space-y-4">
+            <h3 className="font-semibold text-gray-900">Jurisprudencia · fuentes oficiales</h3>
+            <p className="text-sm text-gray-600">Buscá en los portales oficiales y copiá el enlace del documento consultado. La app no realiza consultas a IA ni recupera o verifica fallos automáticamente.</p>
+            <div className="flex flex-wrap gap-4">
+                {portals.map(([name, url]) => <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="text-indigo-700 underline">Abrir {name}</a>)}
+            </div>
+            <p className="text-xs text-gray-500">El portal de Córdoba ofrece su propio buscador semántico. Abrir un portal no envía datos del expediente desde esta app.</p>
+            <h4 className="font-medium">Registrar referencia consultada</h4>
+            <p className="text-sm text-gray-600">Se guardan los datos que ingreses, con fecha de registro y usuario. Un dominio oficial no acredita por sí solo el contenido de un fallo.</p>
+            <form onSubmit={save} className="grid gap-3">
+                {[
+                    ['titulo', 'Título del fallo', 'text', 300],
+                    ['tribunal', 'Tribunal', 'text', 300],
+                    ['fecha', 'Fecha del fallo', 'date', undefined],
+                    ['url', 'Enlace oficial del documento', 'url', 2000],
+                ].map(([field, label, type, maxLength]) => (
+                    <label key={field} className="text-sm grid gap-1">{label}
+                        <input type={type} maxLength={maxLength} required disabled={saving} value={form[field]}
+                            onChange={event => setForm({ ...form, [field]: event.target.value })}
+                            className="border rounded-lg p-2" />
+                    </label>
+                ))}
+                <label className="text-sm grid gap-1">Extracto o notas de lectura (opcional)
+                    <textarea maxLength={5000} disabled={saving} value={form.extracto}
+                        onChange={event => setForm({ ...form, extracto: event.target.value })}
+                        className="border rounded-lg p-2" />
+                </label>
+                <p className="text-xs text-gray-500">Enlaces admitidos: saij.gob.ar y justiciacordoba.gob.ar, con HTTPS.</p>
+                <button disabled={saving || loading || !!loadError} className="bg-indigo-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">
+                    {saving ? 'Guardando…' : 'Guardar referencia'}
                 </button>
-            </div>
-            <div className="p-6">
-                {showKeyInput && (
-                    <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200 text-sm">
-                        <label className="block font-medium text-gray-700 mb-2">Tu API Key de Copilot / OpenAI</label>
-                        <div className="flex gap-2">
-                            <input 
-                                type="password" 
-                                placeholder="sk-..." 
-                                className="flex-1 border-gray-300 rounded-lg text-sm"
-                                value={apiKey}
-                                onChange={(e) => setApiKey(e.target.value)}
-                            />
-                            <button onClick={handleSaveKey} className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700">Guardar Localmente</button>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">La llave solo se guarda en tu navegador y se envía directamente al servidor para consultar la IA.</p>
-                    </div>
-                )}
-
-                <form onSubmit={handleSearch} className="flex gap-2 mb-4">
-                    <input 
-                        type="text" 
-                        placeholder="Ej: Daños punitivos por accidente de tránsito en Córdoba..." 
-                        className="flex-1 border-gray-300 rounded-lg text-sm"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        required
-                    />
-                    <button type="submit" disabled={loading} className="bg-indigo-600 text-white px-6 py-2 text-sm rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50">
-                        <Search className="w-4 h-4"/> 
-                        {loading ? 'Analizando con IA...' : 'Consultar IA'}
-                    </button>
-                </form>
-
-                {error && <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm mb-4">{error}</div>}
-
-                <div className="space-y-4">
-                    {results.length === 0 && !loading && !error && (
-                        <div className="text-center py-8">
-                            <Sparkles className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                            <p className="text-sm text-gray-500">Ingresá los detalles del caso para obtener una estrategia de búsqueda y fallos relevantes.</p>
-                        </div>
-                    )}
-                    
-                    {loading && (
-                        <div className="animate-pulse flex space-x-4 p-4 border border-indigo-100 rounded-lg bg-indigo-50/30">
-                            <div className="flex-1 space-y-4 py-1">
-                                <div className="h-4 bg-indigo-200 rounded w-3/4"></div>
-                                <div className="space-y-2">
-                                    <div className="h-4 bg-indigo-100 rounded"></div>
-                                    <div className="h-4 bg-indigo-100 rounded w-5/6"></div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {results.map((r, i) => (
-                        <div key={i} className="p-5 border border-indigo-100 rounded-xl bg-white shadow-sm">
-                            <h4 className="font-semibold text-lg text-indigo-900 mb-4 pb-2 border-b border-gray-100">
-                                {r.titulo}
-                            </h4>
-                            <div className="prose prose-sm max-w-none prose-indigo">
-                                <ReactMarkdown>{r.resumen_ai}</ReactMarkdown>
-                            </div>
-                            <div className="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500 flex justify-between items-center">
-                                <span>Basado en el Fuero {r.tribunal.split('-')[1]}</span>
-                                <a href={r.url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">
-                                    Abrir SAIJ para consultar manualmente &rarr;
-                                </a>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
+            </form>
+            {saveError && <p role="alert" className="text-red-700">{saveError}</p>}
+            {notice && <p role="status" className="text-green-700">{notice}</p>}
+            <h4 className="font-medium">Referencias del expediente</h4>
+            {!!references.length && <div className="grid gap-3">
+                <label className="text-sm grid gap-1">Buscar en referencias guardadas
+                    <input type="search" value={query} onChange={event => setQuery(event.target.value)} className="border rounded-lg p-2" placeholder="Título, tribunal, fecha o notas" />
+                </label>
+                <label className="text-sm grid gap-1">Origen del registro
+                    <select value={origin} onChange={event => setOrigin(event.target.value)} className="border rounded-lg p-2">
+                        <option value="ALL">Todos los registros</option>
+                        <option value="OFFICIAL">Referencias oficiales ingresadas por el usuario</option>
+                        <option value="HISTORICAL">Registros históricos sin verificar</option>
+                    </select>
+                </label>
+                <p role="status">{visible.length} de {references.length} referencias</p>
+                {(query || origin !== 'ALL') && <button type="button" className="underline text-left" onClick={() => {setQuery('');setOrigin('ALL');}}>Limpiar filtros de referencias</button>}
+            </div>}
+            {loading && <p role="status">Cargando referencias…</p>}
+            {loadError && <div role="alert">{loadError} <button onClick={() => setRetry(value => value + 1)} className="underline">Reintentar carga</button></div>}
+            {!loading && !loadError && references.length === 0 && <p className="text-sm text-gray-500">Sin referencias guardadas.</p>}
+            {!loading && !loadError && !!references.length && !visible.length && <p>No hay referencias que coincidan con los filtros.</p>}
+            {visible.map(item => (
+                <article key={item.id} className="border rounded-lg p-4 space-y-2">
+                    {item.verification === 'USER_PROVIDED' ? <>
+                        <h5 className="font-semibold">{item.titulo}</h5>
+                        <p className="text-sm">{item.tribunal} · {item.fecha} · {item.source}</p>
+                        <p className="text-xs text-gray-500">Cargada por el usuario · contenido sin verificación automática</p>
+                        <p className="whitespace-pre-wrap text-sm">{item.extracto}</p>
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-indigo-700 underline">Consultar documento oficial</a>
+                    </> : <>
+                        <h5>{item.title}</h5>
+                        <p className="text-xs text-amber-800">Registro histórico sin verificar</p>
+                        <p className="whitespace-pre-wrap text-sm">{item.description}</p>
+                    </>}
+                </article>
+            ))}
+        </section>
     );
-};
+}

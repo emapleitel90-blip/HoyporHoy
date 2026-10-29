@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { api } from '../config/api';
 import { useToast } from '../context/ToastContext';
+import { TaskPanel } from '../components/TaskPanel';
+import { FollowUpPanel } from '../components/FollowUpPanel';
+import { FeePanel } from '../components/FeePanel';
 import {
     AlertTriangle,
     Clock,
@@ -65,6 +68,7 @@ const MyDay = () => {
     const formatDate = (dateStr) => {
         const date = new Date(dateStr);
         return date.toLocaleDateString('es-AR', {
+            timeZone: 'America/Argentina/Cordoba',
             weekday: 'short',
             day: 'numeric',
             month: 'short',
@@ -75,6 +79,7 @@ const MyDay = () => {
     const formatTime = (dateStr) => {
         const date = new Date(dateStr);
         return date.toLocaleTimeString('es-AR', {
+            timeZone: 'America/Argentina/Cordoba',
             hour: '2-digit',
             minute: '2-digit',
         });
@@ -190,6 +195,10 @@ const MyDay = () => {
 
     if (error) {
         return (
+            <div className="space-y-6">
+            <TaskPanel inbox />
+            <FollowUpPanel inbox />
+            <FeePanel inbox />
             <div className="flex flex-col items-center justify-center py-20 text-slate-500">
                 <AlertTriangle size={40} className="mb-4 text-red-400" />
                 <p className="text-base font-medium mb-4">{error}</p>
@@ -200,6 +209,7 @@ const MyDay = () => {
                     <RefreshCw size={14} />
                     Reintentar
                 </button>
+            </div>
             </div>
         );
     }
@@ -224,6 +234,9 @@ const MyDay = () => {
             </div>
 
             {/* Resumen rápido */}
+            <div className="mb-8"><TaskPanel inbox /></div>
+            <div className="mb-8"><FollowUpPanel inbox /></div>
+            <FeePanel inbox />
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                 <div className="bg-red-50 border border-red-200/60 rounded-xl p-4 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-red-500 flex items-center justify-center">

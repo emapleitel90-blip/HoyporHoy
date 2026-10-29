@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { api } from '../config/api';
 
 const AuthContext = createContext();
@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     // Helper to get the token for API calls
-    const getToken = () => localStorage.getItem('lyp_token');
+    const getToken = useCallback(() => localStorage.getItem('lyp_token'), []);
 
     return (
         <AuthContext.Provider value={{ user, login, logout, loading, getToken }}>

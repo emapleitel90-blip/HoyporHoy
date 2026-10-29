@@ -9,8 +9,8 @@ Esta aplicación web fue desarrollada para **Lamberti & Pleitel** como sistema d
 
 ## Prerrequisitos
 
-- Node.js (v18 o superior)
-- PostgreSQL (Base de datos local o servicio como Supabase/Railway)
+- Node.js 22.12 o superior de la rama 22, o Node.js 24. CI verifica las ramas 22 y 24.
+- SQLite: la configuración actual guarda la base en un archivo local y no requiere un servidor de base de datos externo.
 
 ## Configuración e Instalación
 
@@ -26,12 +26,12 @@ Esta aplicación web fue desarrollada para **Lamberti & Pleitel** como sistema d
    ```
 3. Configurar variables de entorno:
    - Crear un archivo `.env` basado en `.env.example`.
-   - Configurar `DATABASE_URL` con tu conexión a PostgreSQL.
+   - Configurar `DATABASE_URL` con la ubicación del archivo SQLite (por ejemplo, `file:./dev.db`).
    - Configurar `JWT_SECRET` con una clave segura.
 4. Inicializar la base de datos:
    ```bash
    npx prisma generate
-   npx prisma migrate dev --name init
+   npx prisma migrate deploy
    ```
 5. Cargar datos de prueba (Admin, Estudio, Usuario):
    ```bash
@@ -60,12 +60,44 @@ Esta aplicación web fue desarrollada para **Lamberti & Pleitel** como sistema d
    npm run dev
    ```
 
+## Verificación del código
+
+Con las dependencias del servidor y del cliente instaladas, ejecutar desde la raíz:
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+Las pruebas del servidor usan bases temporales. Las pruebas del cliente verifican la recuperación de Configuración, la importación real de CSV/XLS/XLSX, la navegación con sesión, los comprobantes de gastos y el circuito de honorarios. Los comprobantes usan el mismo almacenamiento privado de los expedientes; ver [la entrega de gastos](ENTREGA_COMPROBANTES_GASTOS.md) y [la entrega de pagos](ENTREGA_COMPROBANTES_PAGOS.md) para los estados anteriores y los reemplazos.
+
+La última validación conjunta local del 29/10/2026 completó 351 pruebas de servidor y 103 de cliente con un trabajador (454 en total). Después del ajuste final del descarte se repitieron las 7 pruebas de biblioteca, todas aprobadas. ESLint y la compilación final también pasaron. La revisión de entregas sobre versiones exactas se documenta en [su entrega](ENTREGA_REVISION_VERSIONES.md):
+
+```bash
+npm --prefix server test -- --maxWorkers=1
+npm --prefix client test -- --maxWorkers=1
+```
+
+La [entrega de escritos](ENTREGA_ESCRITOS_VERSIONADOS.md) registra el último circuito completo. La [entrega de pagos](ENTREGA_COMPROBANTES_PAGOS.md) conserva el diagnóstico anterior del cierre inesperado de Vitest con Node 24.15.0 en Windows y el modo alternativo comprobado en esa etapa; no se omiten pruebas ni se ignoran errores del ejecutor.
+
+GitHub Actions ejecuta estos controles en Node.js 22 y 24 mediante `.github/workflows/ci.yml`. La auditoría de dependencias de cliente y servidor se ejecuta en trabajos separados para que sus resultados no impidan ejecutar las pruebas. El hook de pre-commit revisa los archivos fuente del cliente con el mismo ESLint del proyecto.
+
+SheetJS se instala desde la URL oficial de la versión 0.20.3, registrada en `client/package.json`. Su URL y su hash de integridad quedan fijados en el lockfile; conservar ambos archivos al actualizar o instalar con `npm ci`. Consultar [la distribución oficial](https://docs.sheetjs.com/docs/getting-started/installation/nodejs/) antes de actualizarlo: el paquete `xlsx` del registro npm quedó en una versión anterior.
+
 ## Funcionalidades Principales
 
 - **Dashboard**: Visualización de KPIs y gráficos.
 - **Gestión de Casos**: Formulario de 13 secciones con Scoring automático.
 - **Autenticación**: Roles definidos (Admin, Abogado, Operador).
 - **Responsive**: Diseño adaptado a móviles y escritorio.
+- **Jurisprudencia**: Acceso a portales oficiales y registro de referencias por expediente, sin IA. Ver [alcance y validación](ENTREGA_JURISPRUDENCIA_OFICIAL.md).
+- **Carga por pantalla**: Rutas protegidas y lectura de Excel bajo demanda. Ver [mediciones y límites](ENTREGA_CARGA_CLIENTE.md).
+- **Honorarios y cobranzas**: Acuerdos, cuotas, pagos parciales y saldo por expediente; pendientes en Mi jornada y recordatorios manuales. Ver [entrega y migración](ENTREGA_HONORARIOS_PARA_REVISION.md).
+- **Rectificación de pagos**: Anulación con motivo, autor y fecha, conservando el pago original y actualizando saldos y recordatorios. Ver [alcance y pruebas](ENTREGA_RECTIFICACION_PAGOS.md).
+- **Modificación de acuerdos**: Ajustes de descripción, importes y vencimientos, cuotas nuevas e historial de antes y después, con protección frente a cambios simultáneos. Ver [entrega y validación](ENTREGA_MODIFICACION_ACUERDOS.md).
+- **Comprobantes de pagos**: Archivos privados vinculados al pago, descarga autenticada e historial de reemplazos. Ver [alcance y estado de validación](ENTREGA_COMPROBANTES_PAGOS.md).
+- **Escritos y versiones**: Texto manual por expediente, historial inmutable, restauración, comparación y Word de la versión elegida. La aprobación por tarea corresponde a la parte siguiente. Ver [entrega y verificaciones](ENTREGA_ESCRITOS_VERSIONADOS.md).
 
 ## Despliegue (Railway/Render)
 
@@ -76,3 +108,5 @@ Esta aplicación web fue desarrollada para **Lamberti & Pleitel** como sistema d
 
 ---
 Desarrollado para LyP.
+
+Biblioteca de modelos por estudio o titular: clasificación, campos parametrizados y preparación de escritos nuevos. Ver [entrega y validación](ENTREGA_BIBLIOTECA_MODELOS.md).

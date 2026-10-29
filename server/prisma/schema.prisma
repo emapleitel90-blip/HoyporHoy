@@ -35,6 +35,13 @@ model User {
   deletedAt     DateTime?
   assignedCases Case[]         @relation("AssignedLawyer")
   createdCases  Case[]         @relation("CreatedBy")
+  assignedTasks Task[]         @relation("TaskAssignee")
+  reviewTasks   Task[]         @relation("TaskReviewer")
+  createdTasks  Task[]         @relation("TaskCreator")
+  taskEvents    TaskEvent[]
+  ownedFollowUps FollowUp[] @relation("FollowUpOwner")
+  createdFollowUps FollowUp[] @relation("FollowUpCreator")
+  followUpEvents FollowUpEvent[]
   notifications Notification[]
   studio        Studio?        @relation(fields: [studioId], references: [id])
 }
@@ -66,6 +73,10 @@ model Case {
   expenses         Expense[]
   notifications    Notification[]
   timelineEvents   TimelineEvent[]
+  tasks            Task[]
+  followUps        FollowUp[]
+  feeAgreement     FeeAgreement?
+  writings         Writing[]
 }
 
 model CaseFile {
@@ -75,6 +86,8 @@ model CaseFile {
   caseId    String
   createdAt DateTime @default(now())
   case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  followUps FollowUp[]
+  feePaymentReceipts FeePaymentReceipt[]
 }
 
 model Deadline {
@@ -147,4 +160,231 @@ model FormConfig {
   sections  String   // JSON string with section config
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
+}
+
+model Task {
+  id           String      @id @default(uuid())
+  title        String
+  instructions String?
+  status       String      @default("PENDING") // PENDING, IN_PROGRESS, SUBMITTED, REVISION_REQUESTED, APPROVED
+  dueDate      DateTime?
+  caseId       String
+  assigneeId   String
+  reviewerId   String
+  createdById  String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  requiresWriting Boolean @default(false)
+  case         Case        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  assignee     User        @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  reviewer     User        @relation("TaskReviewer", fields: [reviewerId], references: [id])
+  createdBy    User        @relation("TaskCreator", fields: [createdById], references: [id])
+  events       TaskEvent[]
+
+  @@index([caseId])
+  @@index([assigneeId, status])
+  @@index([reviewerId, status])
+}
+
+model TaskEvent {
+  id         String   @id @default(uuid())
+  taskId     String
+  userId     String
+  action     String   // CREATED, STARTED, PROGRESS_RECORDED, SUBMITTED, REVISION_REQUESTED, APPROVED
+  notes      String?
+  fromStatus String?
+  toStatus   String
+  createdAt  DateTime @default(now())
+  writingVersionId String?
+  requestId String?
+  reviewedSubmissionId String? @unique
+  writingVersion WritingVersion? @relation(fields: [writingVersionId], references: [id], onDelete: Restrict)
+  reviewedSubmission TaskEvent? @relation("SubmissionReview", fields: [reviewedSubmissionId], references: [id], onDelete: Restrict)
+  review TaskEvent? @relation("SubmissionReview")
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([taskId, createdAt])
+  @@unique([taskId, requestId])
+}
+
+model FollowUp {
+  id          String   @id @default(uuid())
+  kind        String   // DOCUMENT, COMMITMENT, BLOCKER
+  title       String
+  notes       String?
+  status      String   @default("PENDING")
+  dueDate     DateTime?
+  caseId      String
+  ownerId     String
+  createdById String
+  fileId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  owner       User     @relation("FollowUpOwner", fields: [ownerId], references: [id])
+  createdBy   User     @relation("FollowUpCreator", fields: [createdById], references: [id])
+  file        CaseFile? @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  events      FollowUpEvent[]
+
+  @@index([caseId, kind])
+  @@index([ownerId, status, dueDate])
+  @@index([fileId])
+}
+
+model FollowUpEvent {
+  id         String   @id @default(uuid())
+  followUpId String
+  userId     String
+  action     String
+  notes      String?
+  changes    String?
+  fileId     String?
+  fromStatus String?
+  toStatus   String
+  createdAt  DateTime @default(now())
+  followUp   FollowUp @relation(fields: [followUpId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([followUpId, createdAt])
+}
+
+model FeeAgreement {
+  id          String @id @default(uuid())
+  caseId      String @unique
+  description String
+  currency    String @default("ARS")
+  createdById String
+  createdAt   DateTime @default(now())
+  version     Int @default(1)
+  case        Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  installments FeeInstallment[]
+  amendments  FeeAgreementAmendment[]
+}
+
+model FeeInstallment {
+  id          String @id @default(uuid())
+  agreementId String
+  position    Int
+  amountCents Int
+  paidCents   Int @default(0)
+  dueDate     DateTime
+  agreement   FeeAgreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  payments    FeePayment[]
+
+  @@unique([agreementId, position])
+  @@index([dueDate])
+}
+
+model FeePayment {
+  id            String @id @default(uuid())
+  installmentId String
+  requestId     String
+  amountCents   Int
+  paidAt        DateTime
+  notes         String?
+  registeredById String
+  createdAt     DateTime @default(now())
+  installment   FeeInstallment @relation(fields: [installmentId], references: [id], onDelete: Cascade)
+  reversal      FeePaymentReversal?
+  receipts      FeePaymentReceipt[]
+
+  @@unique([installmentId, requestId])
+}
+
+model FeePaymentReversal {
+  id               String @id @default(uuid())
+  paymentId        String @unique
+  requestId        String
+  reason           String
+  registeredById   String
+  registeredByName String
+  createdAt        DateTime @default(now())
+  payment          FeePayment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+}
+
+model FeeAgreementAmendment {
+  id               String @id @default(uuid())
+  agreementId      String
+  requestId        String
+  requestData      String
+  reason           String
+  previousVersion  Int
+  version          Int
+  registeredById   String
+  registeredByName String
+  createdAt        DateTime @default(now())
+  beforeData       String
+  afterData        String
+  agreement        FeeAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+
+  @@unique([agreementId, requestId])
+  @@unique([agreementId, version])
+}
+
+model FeePaymentReceipt {
+  id             String @id @default(uuid())
+  paymentId      String
+  fileId         String @unique
+  sequence       Int
+  requestId      String
+  reason         String
+  previousVersion Int
+  contentHash    String
+  uploadedById   String
+  uploadedByName String
+  createdAt      DateTime @default(now())
+  payment        FeePayment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  file           CaseFile @relation(fields: [fileId], references: [id], onDelete: Restrict)
+
+  @@unique([paymentId, sequence])
+  @@unique([paymentId, requestId])
+}
+
+model Writing {
+  id            String @id @default(uuid())
+  caseId        String
+  requestId     String
+  currentVersion Int @default(1)
+  createdById   String
+  createdByName String
+  createdAt     DateTime @default(now())
+  case          Case @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  versions      WritingVersion[]
+
+  @@unique([caseId, requestId])
+}
+
+model WritingVersion {
+  id            String @id @default(uuid())
+  writingId     String
+  number        Int
+  requestId     String
+  previousVersion Int
+  title         String
+  content       String
+  notes         String
+  createdById   String
+  createdByName String
+  createdAt     DateTime @default(now())
+  writing       Writing @relation(fields: [writingId], references: [id], onDelete: Restrict)
+  taskEvents TaskEvent[]
+
+  @@unique([writingId, number])
+  @@unique([writingId, requestId])
+}
+
+model WritingTemplate {
+  id String @id @default(uuid())
+  scope String
+  requestId String
+  title String
+  content String
+  jurisdiction String
+  fuero String
+  kind String
+  createdById String
+  createdByName String
+  createdAt DateTime @default(now())
+  @@unique([scope, requestId])
 }

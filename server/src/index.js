@@ -14,6 +14,10 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import optimizerRoutes from './routes/optimizerRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import formConfigRoutes from './routes/formConfigRoutes.js';
+import taskRoutes from './routes/taskRoutes.js';
+import followUpRoutes from './routes/followUpRoutes.js';
+import feeRoutes from './routes/feeRoutes.js';
+import writingRoutes from './routes/writingRoutes.js';
 
 import { errorHandler } from './middleware/errorMiddleware.js';
 import { checkUpcomingDeadlines } from './skills/deadlineAgent.js';
@@ -64,6 +68,10 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/optimizer', optimizerRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/form-config', formConfigRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/follow-ups', followUpRoutes);
+app.use('/api/fees', feeRoutes);
+app.use('/api/writings', writingRoutes);
 
 app.get('/', (req, res) => {
     res.send('LyP API is running');

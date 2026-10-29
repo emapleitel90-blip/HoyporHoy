@@ -1,27 +1,35 @@
 import express from 'express';
 import { register, login, getMe, changePassword } from '../controllers/authController.js';
-import { protect, admin } from '../middleware/authMiddleware.js';
-import { check } from 'express-validator';
+import { protect } from '../middleware/authMiddleware.js';
+import { body, validationResult } from 'express-validator';
 
 const router = express.Router();
 
+const validate = (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ message: errors.array()[0].msg });
+    }
+    next();
+};
+
 router.post('/register', [
-    check('name', 'Name is required').not().isEmpty(),
-    check('email', 'Please include a valid email').isEmail(),
-    check('password', 'Password must be at least 6 characters').isLength({ min: 6 })
-], register);
+    body('name', 'El nombre es requerido').isString().bail().trim().notEmpty(),
+    body('email', 'Ingresá un email válido').isString().bail().trim().isEmail(),
+    body('password', 'La contraseña debe tener al menos 6 caracteres').isString().bail().isLength({ min: 6 }),
+], validate, register);
 
 router.post('/login', [
-    check('email', 'Please include a valid email').isEmail(),
-    check('password', 'Password is required').exists()
-], login);
+    body('email', 'Ingresá un email válido').isString().bail().trim().isEmail(),
+    body('password', 'La contraseña es requerida').isString().bail().notEmpty(),
+], validate, login);
 
 router.get('/me', protect, getMe);
 
 router.put('/change-password', [
     protect,
-    check('currentPassword', 'La contraseña actual es requerida').exists(),
-    check('newPassword', 'La nueva contraseña debe tener al menos 6 caracteres').isLength({ min: 6 })
-], changePassword);
+    body('currentPassword', 'La contraseña actual es requerida').isString().bail().notEmpty(),
+    body('newPassword', 'La nueva contraseña debe tener al menos 6 caracteres').isString().bail().isLength({ min: 6 }),
+], validate, changePassword);
 
 export default router;

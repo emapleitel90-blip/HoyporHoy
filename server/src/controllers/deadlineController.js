@@ -1,18 +1,41 @@
 // Controller: Deadlines
 import prisma from '../utils/prismaClient.js';
-import { checkDeadlinesForStudio } from '../skills/deadlineAgent.js';
+import { checkDeadlinesForUser } from '../skills/deadlineAgent.js';
+import { caseScope } from '../utils/caseAccess.js';
+import { argentinaDayBounds, parseDeadlineDate } from '../utils/argentinaTime.js';
+
+const deadlineInput = (body, creating = false) => {
+    const data = {};
+    if (creating || body.title !== undefined) {
+        if (typeof body.title !== 'string' || !body.title.trim() || body.title.trim().length > 200) {
+            return { error: 'Ingresá una descripción del plazo de hasta 200 caracteres' };
+        }
+        data.title = body.title.trim();
+    }
+    if (creating || body.dueDate !== undefined) {
+        const dueDate = parseDeadlineDate(body.dueDate);
+        if (!dueDate) return { error: 'Ingresá una fecha válida; si incluís la hora, indicá su zona horaria' };
+        data.dueDate = dueDate;
+    }
+    if (body.notes !== undefined) {
+        if (body.notes !== null && (typeof body.notes !== 'string' || body.notes.length > 10000)) {
+            return { error: 'Las observaciones deben ser texto de hasta 10000 caracteres' };
+        }
+        data.notes = body.notes;
+    }
+    if (body.isCompleted !== undefined) {
+        if (typeof body.isCompleted !== 'boolean') return { error: 'El estado de cumplimiento debe ser verdadero o falso' };
+        data.isCompleted = body.isCompleted;
+    }
+    return { data };
+};
 
 // GET /api/cases/:id/deadlines  — Listar plazos de un expediente
 export const getDeadlinesByCase = async (req, res, next) => {
     try {
         const caseId = req.params.id;
-        const exp = await prisma.case.findUnique({ where: { id: caseId } });
+        const exp = await prisma.case.findFirst({ where: { id: caseId, ...caseScope(req.user) } });
         if (!exp) return res.status(404).json({ message: 'Expediente no encontrado' });
-
-        // Tenant isolation
-        if (req.user.role !== 'SUPER_ADMIN' && exp.studioId !== req.user.studioId) {
-            return res.status(403).json({ message: 'No autorizado' });
-        }
 
         const deadlines = await prisma.deadline.findMany({
             where: { caseId },
@@ -28,18 +51,13 @@ export const getDeadlinesByCase = async (req, res, next) => {
 export const createDeadline = async (req, res, next) => {
     try {
         const caseId = req.params.id;
-        const { title, dueDate, notes } = req.body;
-        if (!title || !dueDate) return res.status(400).json({ message: 'title y dueDate son requeridos' });
-
-        const exp = await prisma.case.findUnique({ where: { id: caseId } });
+        const exp = await prisma.case.findFirst({ where: { id: caseId, ...caseScope(req.user) } });
         if (!exp) return res.status(404).json({ message: 'Expediente no encontrado' });
-
-        if (req.user.role !== 'SUPER_ADMIN' && exp.studioId !== req.user.studioId) {
-            return res.status(403).json({ message: 'No autorizado' });
-        }
+        const { data, error } = deadlineInput(req.body, true);
+        if (error) return res.status(400).json({ message: error });
 
         const deadline = await prisma.deadline.create({
-            data: { title, dueDate: new Date(dueDate), notes, caseId },
+            data: { ...data, caseId },
         });
         res.status(201).json(deadline);
     } catch (err) {
@@ -51,22 +69,14 @@ export const createDeadline = async (req, res, next) => {
 export const updateDeadline = async (req, res, next) => {
     try {
         const id = req.params.id;
-        const { title, dueDate, notes, isCompleted } = req.body;
-        const existing = await prisma.deadline.findUnique({ where: { id }, include: { case: true } });
+        const existing = await prisma.deadline.findFirst({ where: { id, case: caseScope(req.user) } });
         if (!existing) return res.status(404).json({ message: 'Plazo no encontrado' });
-
-        if (req.user.role !== 'SUPER_ADMIN' && existing.case.studioId !== req.user.studioId) {
-            return res.status(403).json({ message: 'No autorizado' });
-        }
+        const { data, error } = deadlineInput(req.body);
+        if (error) return res.status(400).json({ message: error });
 
         const updated = await prisma.deadline.update({
             where: { id },
-            data: {
-                title: title ?? existing.title,
-                dueDate: dueDate ? new Date(dueDate) : existing.dueDate,
-                notes: notes ?? existing.notes,
-                isCompleted: isCompleted !== undefined ? isCompleted : existing.isCompleted,
-            },
+            data,
         });
         res.json(updated);
     } catch (err) {
@@ -78,12 +88,8 @@ export const updateDeadline = async (req, res, next) => {
 export const deleteDeadline = async (req, res, next) => {
     try {
         const id = req.params.id;
-        const existing = await prisma.deadline.findUnique({ where: { id }, include: { case: true } });
+        const existing = await prisma.deadline.findFirst({ where: { id, case: caseScope(req.user) } });
         if (!existing) return res.status(404).json({ message: 'Plazo no encontrado' });
-
-        if (req.user.role !== 'SUPER_ADMIN' && existing.case.studioId !== req.user.studioId) {
-            return res.status(403).json({ message: 'No autorizado' });
-        }
 
         await prisma.deadline.delete({ where: { id } });
         res.json({ message: 'Plazo eliminado correctamente' });
@@ -95,8 +101,7 @@ export const deleteDeadline = async (req, res, next) => {
 // GET /api/deadlines/upcoming  — Vencimientos próximos (48hs) del studio del usuario
 export const getUpcomingDeadlines = async (req, res, next) => {
     try {
-        const studioId = req.user.role === 'SUPER_ADMIN' ? null : req.user.studioId;
-        const results = await checkDeadlinesForStudio(studioId);
+        const results = await checkDeadlinesForUser(req.user);
         res.json({ count: results.length, deadlines: results });
     } catch (err) {
         next(err);
@@ -104,38 +109,11 @@ export const getUpcomingDeadlines = async (req, res, next) => {
 };
 
 // GET /api/deadlines/my-day  — "Mi jornada": vencidos, hoy, próximos 7 días
-// Multi-tenancy: se filtra por case.studioId del usuario autenticado.
-// No acepta studioId desde el frontend.
+// Usa el mismo acceso por estudio o titular independiente que los expedientes.
 export const getMyDay = async (req, res, next) => {
     try {
-        // Construir el filtro de tenant seguro (solo desde el token, nunca del frontend)
-        const tenantFilter = {};
-        if (req.user.role !== 'SUPER_ADMIN') {
-            tenantFilter.case = { studioId: req.user.studioId, deletedAt: null };
-        } else {
-            tenantFilter.case = { deletedAt: null };
-        }
-
-        // Calcular los límites de fecha en zona horaria de Córdoba
-        // Usamos offsets manuales para no agregar dependencias (America/Argentina/Cordoba = UTC-3)
-        const nowUtc = new Date();
-        const cordobaOffsetMs = -3 * 60 * 60 * 1000;
-        const nowCordoba = new Date(nowUtc.getTime() + cordobaOffsetMs);
-
-        // Inicio y fin del día de hoy en Córdoba
-        const todayStartCordoba = new Date(nowCordoba);
-        todayStartCordoba.setHours(0, 0, 0, 0);
-        const todayEndCordoba = new Date(nowCordoba);
-        todayEndCordoba.setHours(23, 59, 59, 999);
-
-        // Convertir a UTC para consultar la BD
-        const todayStartUtc = new Date(todayStartCordoba.getTime() - cordobaOffsetMs);
-        const todayEndUtc = new Date(todayEndCordoba.getTime() - cordobaOffsetMs);
-
-        // Límite de 7 días futuros (desde mañana)
-        const in7daysEndCordoba = new Date(todayEndCordoba);
-        in7daysEndCordoba.setDate(in7daysEndCordoba.getDate() + 7);
-        const in7daysEndUtc = new Date(in7daysEndCordoba.getTime() - cordobaOffsetMs);
+        const tenantFilter = { case: caseScope(req.user) };
+        const { todayStart, tomorrowStart, upcomingEnd } = argentinaDayBounds();
 
         // Campos a incluir del expediente (datos mínimos, no exponer info sensible)
         const caseInclude = {
@@ -155,7 +133,7 @@ export const getMyDay = async (req, res, next) => {
             prisma.deadline.findMany({
                 where: {
                     isCompleted: false,
-                    dueDate: { lt: todayStartUtc },
+                    dueDate: { lt: todayStart },
                     ...tenantFilter,
                 },
                 include: { case: caseInclude },
@@ -165,7 +143,7 @@ export const getMyDay = async (req, res, next) => {
             prisma.deadline.findMany({
                 where: {
                     isCompleted: false,
-                    dueDate: { gte: todayStartUtc, lte: todayEndUtc },
+                    dueDate: { gte: todayStart, lt: tomorrowStart },
                     ...tenantFilter,
                 },
                 include: { case: caseInclude },
@@ -175,7 +153,7 @@ export const getMyDay = async (req, res, next) => {
             prisma.deadline.findMany({
                 where: {
                     isCompleted: false,
-                    dueDate: { gt: todayEndUtc, lte: in7daysEndUtc },
+                    dueDate: { gte: tomorrowStart, lt: upcomingEnd },
                     ...tenantFilter,
                 },
                 include: { case: caseInclude },

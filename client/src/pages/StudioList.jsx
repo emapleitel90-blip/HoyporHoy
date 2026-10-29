@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import {
-    Building2, Users, Briefcase, Plus, AlertCircle,
-    CheckCircle2, XCircle, Search, Power, ArrowUpRight,
-    ChevronRight, Mail, Hash, ShieldCheck
+    Building2, Users, Briefcase, Plus,
+    CheckCircle2, XCircle, Search, Power,
+    Mail, Hash, ShieldCheck
 } from 'lucide-react';
-import { api, API_URL } from '../config/api';
+import { api } from '../config/api';
 import { useToast } from '../context/ToastContext';
 
 const StudioList = () => {
@@ -25,11 +25,7 @@ const StudioList = () => {
 
     const [newCredentials, setNewCredentials] = useState(null);
 
-    useEffect(() => {
-        fetchStudios();
-    }, []);
-
-    const fetchStudios = async () => {
+    const fetchStudios = useCallback(async () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('lyp_token');
@@ -42,7 +38,11 @@ const StudioList = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [showToast]);
+
+    useEffect(() => {
+        fetchStudios();
+    }, [fetchStudios]);
 
     const handleCreateStudio = async (e) => {
         e.preventDefault();

@@ -23,20 +23,20 @@ const Help = () => {
                             <h2 className="text-lg font-semibold text-slate-800">Gestión de Casos</h2>
                         </div>
                         <p className="text-slate-600 text-sm leading-relaxed">
-                            Los casos o expedientes son el núcleo del sistema. Para crear uno nuevo, dirígete a la sección "Gestión de Casos" y haz clic en el botón "Nuevo Caso".
+                            Para crear un expediente, abrí &quot;Gestión de Expedientes&quot; y elegí &quot;Nuevo Caso&quot;. En pantallas angostas, usá &quot;Abrir menú&quot; para cambiar de sección.
                         </p>
                         <ul className="space-y-2 text-sm text-slate-600">
                             <li className="flex items-start gap-2">
                                 <CheckCircle2 size={16} className="text-green-500 mt-0.5 shrink-0" />
-                                <span>Rellena la información básica: título, descripción y prioridad.</span>
+                                <span>Completá los módulos de admisión con los datos del consultante y del caso.</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <CheckCircle2 size={16} className="text-green-500 mt-0.5 shrink-0" />
-                                <span>Asigna el caso a un cliente existente o crea uno nuevo en el momento.</span>
+                                <span>Desde la lista podés abrir el detalle, editar el expediente o importar casos desde CSV, XLS o XLSX.</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <CheckCircle2 size={16} className="text-green-500 mt-0.5 shrink-0" />
-                                <span>A medida que el caso avanza, actualiza su estado (Abierto, En Progreso, Cerrado).</span>
+                                <span>En el detalle encontrás tareas, vencimientos, gastos, seguimiento, archivos, honorarios y referencias jurisprudenciales.</span>
                             </li>
                         </ul>
                     </div>
@@ -45,10 +45,10 @@ const Help = () => {
                     <div className="space-y-4">
                         <div className="flex items-center gap-3 text-indigo-600 mb-2">
                             <Users size={20} />
-                            <h2 className="text-lg font-semibold text-slate-800">Clientes</h2>
+                            <h2 className="text-lg font-semibold text-slate-800">Datos del consultante</h2>
                         </div>
                         <p className="text-slate-600 text-sm leading-relaxed">
-                            Mantén una base de datos actualizada de todos los involucrados en tus expedientes.
+                            Los datos personales y de contacto se completan en el formulario de admisión del expediente.
                         </p>
                         <ul className="space-y-2 text-sm text-slate-600">
                             <li className="flex items-start gap-2">
@@ -57,7 +57,7 @@ const Help = () => {
                             </li>
                             <li className="flex items-start gap-2">
                                 <CheckCircle2 size={16} className="text-green-500 mt-0.5 shrink-0" />
-                                <span>Un cliente puede estar asociado a múltiples casos simultáneamente.</span>
+                                <span>Revisá los datos de cada expediente antes de preparar un seguimiento o recordatorio para el cliente.</span>
                             </li>
                         </ul>
                     </div>
@@ -66,10 +66,10 @@ const Help = () => {
                     <div className="space-y-4">
                         <div className="flex items-center gap-3 text-indigo-600 mb-2">
                             <FileText size={20} />
-                            <h2 className="text-lg font-semibold text-slate-800">Notas y Actualizaciones</h2>
+                            <h2 className="text-lg font-semibold text-slate-800">Documentación y seguimiento</h2>
                         </div>
                         <p className="text-slate-600 text-sm leading-relaxed">
-                            Lleva el historial completo de cada expediente a través del sistema de notas.
+                            Registrá documentos pendientes, compromisos y bloqueos en el panel de seguimiento. Las tareas y los seguimientos conservan su historial.
                         </p>
                         <ul className="space-y-2 text-sm text-slate-600">
                             <li className="flex items-start gap-2">
@@ -78,7 +78,7 @@ const Help = () => {
                             </li>
                             <li className="flex items-start gap-2">
                                 <CheckCircle2 size={16} className="text-green-500 mt-0.5 shrink-0" />
-                                <span>Utiliza la pestaña "Notas" para registrar llamadas telefónicas, audiencias o movimientos del juzgado.</span>
+                                <span>Adjuntá archivos reales en &quot;Documentación y Archivos&quot;. Recibir un documento y verificarlo son pasos distintos.</span>
                             </li>
                         </ul>
                     </div>
@@ -89,11 +89,15 @@ const Help = () => {
                         <div className="space-y-3">
                             <div>
                                 <p className="text-sm font-medium text-slate-800">¿Cómo cambio mi contraseña?</p>
-                                <p className="text-xs text-slate-500 mt-1">Ve a la sección "Configuración" desde el menú lateral y busca la opción de Seguridad.</p>
+                                <p className="text-xs text-slate-500 mt-1">Ve a la sección &quot;Configuración&quot; desde el menú lateral y busca la opción de Seguridad.</p>
                             </div>
                             <div>
                                 <p className="text-sm font-medium text-slate-800">¿Quién tiene acceso a mis expedientes?</p>
-                                <p className="text-xs text-slate-500 mt-1">Solo los miembros de tu Estudio Jurídico con cuenta activa pueden ver la información (On-Premise).</p>
+                                <p className="text-xs text-slate-500 mt-1">Los integrantes activos del estudio comparten sus expedientes. Los usuarios independientes acceden a los propios. Los superadministradores tienen acceso administrativo general.</p>
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-slate-800">¿Cómo registro honorarios y pagos?</p>
+                                <p className="text-xs text-slate-500 mt-1">En el detalle, un abogado o administrador registra el acuerdo y las cuotas en &quot;Honorarios y cobranzas&quot;. Cada pago recibido reduce el saldo. Mi jornada reúne cuotas atrasadas y próximas; los recordatorios se copian para revisar y enviar manualmente.</p>
                             </div>
                         </div>
                     </div>

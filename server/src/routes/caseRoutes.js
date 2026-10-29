@@ -1,5 +1,7 @@
 import express from 'express';
-import { getCases, createCase, getCaseById, updateCase, getCaseStats, addCaseFile, deleteCaseFile, importCases } from '../controllers/caseController.js';
+import { getCases, createCase, getCaseById, updateCase, getCaseStats, importCases } from '../controllers/caseController.js';
+import { addCaseFile, downloadCaseFile, deleteCaseFile } from '../controllers/caseFileController.js';
+import { authorizeCaseFileUpload, receiveCaseFile } from '../middleware/caseFileUpload.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -14,9 +16,8 @@ router.route('/:id')
     .get(protect, getCaseById)
     .put(protect, updateCase);
 
-import { upload } from '../middleware/uploadMiddleware.js';
-
-router.post('/:id/files', protect, upload.single('file'), addCaseFile);
+router.post('/:id/files', protect, authorizeCaseFileUpload, receiveCaseFile, addCaseFile);
+router.get('/files/:fileId/download', protect, downloadCaseFile);
 router.delete('/files/:fileId', protect, deleteCaseFile);
 
 router.post('/import', protect, importCases);

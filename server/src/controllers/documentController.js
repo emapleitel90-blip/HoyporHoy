@@ -1,6 +1,7 @@
 // Controller: Documento — Skill 2 Redactor
 import prisma from '../utils/prismaClient.js';
 import { generateDocument } from '../skills/documentRedactor.js';
+import { caseScope } from '../utils/caseAccess.js';
 
 // POST /api/documents/generate
 export const generateDocumentController = async (req, res, next) => {
@@ -8,8 +9,8 @@ export const generateDocumentController = async (req, res, next) => {
         const { caseId, templateType = 'cedula' } = req.body;
         if (!caseId) return res.status(400).json({ message: 'caseId es requerido' });
 
-        const caseData = await prisma.case.findUnique({
-            where: { id: caseId },
+        const caseData = await prisma.case.findFirst({
+            where: { id: caseId, ...caseScope(req.user) },
             include: {
                 assignedLawyer: { select: { name: true, email: true } },
                 studio: { select: { name: true } },
@@ -17,11 +18,6 @@ export const generateDocumentController = async (req, res, next) => {
         });
 
         if (!caseData) return res.status(404).json({ message: 'Expediente no encontrado' });
-
-        // Tenant isolation
-        if (req.user.role !== 'SUPER_ADMIN' && caseData.studioId !== req.user.studioId) {
-            return res.status(403).json({ message: 'No autorizado' });
-        }
 
         const buffer = await generateDocument(caseData, templateType);
 

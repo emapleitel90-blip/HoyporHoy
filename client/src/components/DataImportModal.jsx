@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
-import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
+import { readImportRows } from '../utils/importRows';
 import { UploadCloud, X, FileSpreadsheet, Loader2, CheckCircle2 } from 'lucide-react';
 import axios from 'axios';
 import { api } from '../config/api';
@@ -10,46 +9,42 @@ export const DataImportModal = ({ isOpen, onClose, onImportSuccess }) => {
     const [file, setFile] = useState(null);
     const [previewData, setPreviewData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [parsing, setParsing] = useState(false);
     const [step, setStep] = useState(1);
     const fileInputRef = useRef(null);
+    const loadVersion = useRef(0);
     const { showToast } = useToast();
 
     if (!isOpen) return null;
 
-    const handleFileChange = (e) => {
+    const handleFileChange = async (e) => {
         const selectedFile = e.target.files[0];
         if (!selectedFile) return;
+        e.target.value = '';
 
-        setFile(selectedFile);
         const fileExt = selectedFile.name.split('.').pop().toLowerCase();
-
-        if (fileExt === 'csv') {
-            Papa.parse(selectedFile, {
-                header: true,
-                skipEmptyLines: true,
-                complete: (results) => {
-                    setPreviewData(results.data);
-                    setStep(2);
-                },
-                error: (error) => {
-                    showToast('Error al leer el archivo CSV', 'error');
-                }
-            });
-        } else if (fileExt === 'xlsx' || fileExt === 'xls') {
-            const reader = new FileReader();
-            reader.onload = (evt) => {
-                const bstr = evt.target.result;
-                const wb = XLSX.read(bstr, { type: 'binary' });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
-                const data = XLSX.utils.sheet_to_json(ws, { raw: false });
-                setPreviewData(data);
-                setStep(2);
-            };
-            reader.readAsBinaryString(selectedFile);
-        } else {
+        const version = ++loadVersion.current;
+        setPreviewData([]);
+        setStep(1);
+        if (!['csv', 'xlsx', 'xls'].includes(fileExt)) {
             showToast('Formato no soportado. Por favor sube un CSV o Excel.', 'warning');
             setFile(null);
+            setParsing(false);
+            return;
+        }
+        setFile(selectedFile);
+        setParsing(true);
+        try {
+            const rows = await readImportRows(selectedFile);
+            if (version !== loadVersion.current) return;
+            setPreviewData(rows);
+            setStep(2);
+        } catch (error) {
+            if (version !== loadVersion.current) return;
+            setFile(null);
+            showToast(error.message, 'error');
+        } finally {
+            if (version === loadVersion.current) setParsing(false);
         }
     };
 
@@ -62,13 +57,12 @@ export const DataImportModal = ({ isOpen, onClose, onImportSuccess }) => {
         e.preventDefault();
         e.stopPropagation();
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            fileInputRef.current.files = e.dataTransfer.files;
             handleFileChange({ target: { files: e.dataTransfer.files } });
         }
     };
 
     const confirmImport = async () => {
-        if (!previewData || previewData.length === 0) return;
+        if (loading || !previewData || previewData.length === 0) return;
         setLoading(true);
 
         try {
@@ -95,10 +89,8 @@ export const DataImportModal = ({ isOpen, onClose, onImportSuccess }) => {
             });
 
             showToast(res.data.message, 'success');
-            setTimeout(() => {
-                onImportSuccess();
-                closeModal();
-            }, 1000);
+            onImportSuccess();
+            closeModal();
         } catch (error) {
             showToast(error.response?.data?.message || 'Error al importar datos', 'error');
         } finally {
@@ -107,6 +99,8 @@ export const DataImportModal = ({ isOpen, onClose, onImportSuccess }) => {
     };
 
     const closeModal = () => {
+        loadVersion.current++;
+        setParsing(false);
         setFile(null);
         setPreviewData([]);
         setStep(1);
@@ -121,7 +115,7 @@ export const DataImportModal = ({ isOpen, onClose, onImportSuccess }) => {
                         <h2 className="text-xl font-bold text-gray-800">Importación White-Glove</h2>
                         <p className="text-sm text-gray-500 mt-1">Sube tu Excel o CSV para importar casos masivamente.</p>
                     </div>
-                    <button onClick={closeModal} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+                    <button onClick={closeModal} disabled={loading} aria-label="Cerrar importación" className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -140,13 +134,14 @@ export const DataImportModal = ({ isOpen, onClose, onImportSuccess }) => {
                             <h3 className="text-lg font-semibold text-gray-800 mb-2">Haz clic o arrastra tu archivo aquí</h3>
                             <p className="text-sm text-gray-500 max-w-sm mb-6">
                                 Soporta formatos <b>.CSV, .XLSX, .XLS</b>.<br/>
-                                Asegúrate de incluir columnas como "Título", "Cliente" o "Fuero".
+                                Asegúrate de incluir columnas como &quot;Título&quot;, &quot;Cliente&quot; o &quot;Fuero&quot;.
                             </p>
                             <button className="px-6 py-2.5 bg-primary text-white rounded-xl font-medium shadow-sm shadow-primary/30 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                                Seleccionar Archivo
+                                {parsing ? 'Leyendo archivo...' : 'Seleccionar Archivo'}
                             </button>
                             <input 
                                 type="file" 
+                                aria-label="Archivo para importar"
                                 ref={fileInputRef} 
                                 className="hidden" 
                                 accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 

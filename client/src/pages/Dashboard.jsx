@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-    ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+    ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 import { 
-    FileText, CheckCircle, Clock, AlertTriangle, Plus, 
+    FileText, Clock, AlertTriangle, Plus,
     TrendingUp, ArrowUpRight, ArrowDownRight, Calendar,
     User, Briefcase, Activity as ActivityIcon
 } from 'lucide-react';
@@ -50,7 +50,7 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const fetchStats = async () => {
+    const fetchStats = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -102,11 +102,11 @@ const Dashboard = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [getToken]);
 
     useEffect(() => {
         fetchStats();
-    }, []);
+    }, [fetchStats]);
 
     // Valores seguros (programación defensiva)
     const safeStats = stats || EMPTY_STATS;

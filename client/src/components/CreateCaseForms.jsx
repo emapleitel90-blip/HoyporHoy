@@ -1,5 +1,5 @@
 import React from 'react';
-import { Info, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Info } from 'lucide-react';
 
 export const Field = ({ label, name, type = 'text', value, onChange, required, placeholder }) => (
     <div className="space-y-1.5">

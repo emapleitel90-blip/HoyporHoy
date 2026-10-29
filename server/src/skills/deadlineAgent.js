@@ -4,15 +4,19 @@
  * Disparado por cron cada día a las 7:00 AM (America/Argentina/Cordoba).
  */
 import prisma from '../utils/prismaClient.js';
+import { caseScope } from '../utils/caseAccess.js';
+import { ARGENTINA_TIME_ZONE, argentinaDayBounds } from '../utils/argentinaTime.js';
 
 export async function checkUpcomingDeadlines() {
     const now = new Date();
+    const { todayStart, tomorrowStart } = argentinaDayBounds(now);
     const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
 
     // Buscar plazos no completados cuyo vencimiento sea dentro de 48hs
     const upcomingDeadlines = await prisma.deadline.findMany({
         where: {
             isCompleted: false,
+            case: { deletedAt: null },
             dueDate: {
                 gte: now,
                 lte: in48h,
@@ -21,7 +25,7 @@ export async function checkUpcomingDeadlines() {
         include: {
             case: {
                 include: {
-                    assignedLawyer: { select: { id: true, name: true, email: true } },
+                    assignedLawyer: { select: { id: true, name: true, studioId: true, deletedAt: true } },
                     studio: { select: { id: true, name: true } },
                 },
             },
@@ -37,7 +41,9 @@ export async function checkUpcomingDeadlines() {
 
     for (const deadline of upcomingDeadlines) {
         const lawyer = deadline.case.assignedLawyer;
-        if (!lawyer) continue; // Si no hay abogado asignado, omitir
+        if (!lawyer || lawyer.deletedAt || (deadline.case.studioId
+            ? lawyer.studioId !== deadline.case.studioId
+            : lawyer.id !== deadline.case.createdById)) continue;
 
         const hoursLeft = Math.round((new Date(deadline.dueDate) - now) / (1000 * 60 * 60));
 
@@ -47,7 +53,7 @@ export async function checkUpcomingDeadlines() {
                 userId: lawyer.id,
                 caseId: deadline.caseId,
                 type: 'DEADLINE_ALERT',
-                createdAt: { gte: new Date(now.setHours(0, 0, 0, 0)) },
+                createdAt: { gte: todayStart, lt: tomorrowStart },
                 message: { contains: `[Plazo ID: ${deadline.id}]` },
             },
         });
@@ -57,7 +63,7 @@ export async function checkUpcomingDeadlines() {
         const notification = await prisma.notification.create({
             data: {
                 title: `⚠️ Vencimiento en ${hoursLeft}hs — ${deadline.case.caseNumber}`,
-                message: `El plazo "${deadline.title}" vence el ${new Date(deadline.dueDate).toLocaleDateString('es-AR')} (en ${hoursLeft} horas). [Plazo ID: ${deadline.id}]`,
+                message: `El plazo "${deadline.title}" vence el ${new Date(deadline.dueDate).toLocaleDateString('es-AR', { timeZone: ARGENTINA_TIME_ZONE })} (en ${hoursLeft} horas). [Plazo ID: ${deadline.id}]`,
                 type: 'DEADLINE_ALERT',
                 userId: lawyer.id,
                 caseId: deadline.caseId,
@@ -72,21 +78,17 @@ export async function checkUpcomingDeadlines() {
 }
 
 /**
- * Versión manual del agente para endpoints de administración.
- * @param {number|null} studioId - Si se pasa, solo procesa ese estudio.
+ * Consulta de próximos plazos limitada al acceso del usuario autenticado.
  */
-export async function checkDeadlinesForStudio(studioId = null) {
+export async function checkDeadlinesForUser(user) {
     const now = new Date();
     const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
 
     const where = {
         isCompleted: false,
         dueDate: { gte: now, lte: in48h },
+        case: caseScope(user),
     };
-
-    if (studioId) {
-        where.case = { studioId };
-    }
 
     const deadlines = await prisma.deadline.findMany({
         where,

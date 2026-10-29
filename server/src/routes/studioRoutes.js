@@ -15,7 +15,7 @@ router.route('/:id/status')
     .put(protect, superAdmin, updateStudioStatus);
 
 router.route('/:id/users')
-    .get(protect, admin, getStudioUsers)
+    .get(protect, getStudioUsers)
     .post(protect, admin, createStudioUser);
 
 router.route('/users/:userId')

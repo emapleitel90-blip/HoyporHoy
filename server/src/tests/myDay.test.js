@@ -2,25 +2,25 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock de Prisma
 const mockFindMany = vi.fn();
-const mockFindUnique = vi.fn();
+const mockFindFirst = vi.fn();
 const mockUpdate = vi.fn();
 
 vi.mock('../utils/prismaClient.js', () => ({
     default: {
         deadline: {
             findMany: (...args) => mockFindMany(...args),
-            findUnique: (...args) => mockFindUnique(...args),
+            findFirst: (...args) => mockFindFirst(...args),
             update: (...args) => mockUpdate(...args),
         },
         case: {
-            findUnique: (...args) => mockFindUnique(...args),
+            findFirst: (...args) => mockFindFirst(...args),
         },
     },
 }));
 
 // Mock del deadlineAgent para evitar que se importe y falle
 vi.mock('../skills/deadlineAgent.js', () => ({
-    checkDeadlinesForStudio: vi.fn().mockResolvedValue([]),
+    checkDeadlinesForUser: vi.fn().mockResolvedValue([]),
 }));
 
 // Importar después del mock
@@ -128,13 +128,13 @@ describe('GET /api/deadlines/my-day (Mi jornada)', () => {
         // Overdue: dueDate < inicio del día
         expect(calls[0][0].where.dueDate).toHaveProperty('lt');
 
-        // Today: dueDate >= inicio del día AND dueDate <= fin del día
+        // Today: incluye el inicio de hoy y excluye el inicio de mañana.
         expect(calls[1][0].where.dueDate).toHaveProperty('gte');
-        expect(calls[1][0].where.dueDate).toHaveProperty('lte');
+        expect(calls[1][0].where.dueDate).toHaveProperty('lt');
 
-        // Upcoming: dueDate > fin del día AND dueDate <= fin del día + 7
-        expect(calls[2][0].where.dueDate).toHaveProperty('gt');
-        expect(calls[2][0].where.dueDate).toHaveProperty('lte');
+        // Upcoming: empieza mañana y excluye el comienzo del octavo día.
+        expect(calls[2][0].where.dueDate).toHaveProperty('gte');
+        expect(calls[2][0].where.dueDate).toHaveProperty('lt');
     });
 
     it('Debe excluir expedientes eliminados (deletedAt: null)', async () => {
@@ -201,15 +201,8 @@ describe('PUT /api/deadlines/:id (Aislamiento multi-tenant)', () => {
         vi.clearAllMocks();
     });
 
-    it('Debe impedir completar un vencimiento de otro estudio (403)', async () => {
-        // El vencimiento pertenece a studio-B, pero el usuario es de studio-A
-        mockFindUnique.mockResolvedValue({
-            id: 'd1',
-            title: 'Test',
-            dueDate: new Date(),
-            isCompleted: false,
-            case: { studioId: 'studio-B' },
-        });
+    it('Debe ocultar un vencimiento fuera del acceso del usuario (404)', async () => {
+        mockFindFirst.mockResolvedValue(null);
 
         const req = {
             user: { id: 'u1', role: 'LAWYER', studioId: 'studio-A' },
@@ -220,14 +213,15 @@ describe('PUT /api/deadlines/:id (Aislamiento multi-tenant)', () => {
 
         await updateDeadline(req, res, nextFn);
 
-        expect(res.status).toHaveBeenCalledWith(403);
+        expect(res.status).toHaveBeenCalledWith(404);
         expect(res.json).toHaveBeenCalledWith(
-            expect.objectContaining({ message: 'No autorizado' }),
+            expect.objectContaining({ message: 'Plazo no encontrado' }),
         );
+        expect(mockUpdate).not.toHaveBeenCalled();
     });
 
     it('Debe permitir completar un vencimiento del mismo estudio', async () => {
-        mockFindUnique.mockResolvedValue({
+        mockFindFirst.mockResolvedValue({
             id: 'd1',
             title: 'Test',
             dueDate: new Date(),
@@ -258,7 +252,7 @@ describe('PUT /api/deadlines/:id (Aislamiento multi-tenant)', () => {
     });
 
     it('SUPER_ADMIN debe poder completar vencimientos de cualquier estudio', async () => {
-        mockFindUnique.mockResolvedValue({
+        mockFindFirst.mockResolvedValue({
             id: 'd1',
             title: 'Test',
             dueDate: new Date(),

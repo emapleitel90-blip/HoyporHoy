@@ -106,7 +106,10 @@ export const getStudioUsers = async (req, res) => {
 
         const users = await prisma.user.findMany({
             where: { studioId: id, deletedAt: null },
-            select: { id: true, name: true, email: true, role: true, lastLogin: true, createdAt: true }
+            select: {
+                id: true, name: true, email: true, role: true,
+                ...(['ADMIN', 'SUPER_ADMIN'].includes(req.user.role) ? { lastLogin: true, createdAt: true } : {}),
+            }
         });
         res.json(users);
     } catch (error) {

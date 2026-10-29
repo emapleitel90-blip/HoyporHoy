@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Save, ArrowRight, ArrowLeft, CheckCircle2, Plus, Trash2, X } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Save, ArrowRight, ArrowLeft, Plus, Trash2, X } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
-import { api, API_URL } from '../config/api';
+import { api } from '../config/api';
 
 import { Field, Select, Textarea, SectionInfo, SCORING_ITEMS, SCORE_VALUES, getScoreLabel } from '../components/CreateCaseForms';
 
@@ -149,14 +149,38 @@ const DEFAULT_SECTIONS = [
         type: 'standard',
         fields: [
             { name: 'honorarios', label: 'Modalidad de Honorarios', type: 'select', options: ['Cuota Litis', 'Monto Fijo', 'Abono', 'Regulados'] },
-            { name: 'abogadoAsignado', label: 'Abogado Responsable', type: 'text' },
+            { name: 'assignedLawyerId', label: 'Abogado Responsable', type: 'select' },
             { name: 'notasInternas', label: 'Notas Administrativas', type: 'textarea', fullWidth: true },
         ]
     }
 ];
 
 // ─── Dynamic field renderer ────────────────────────────────────────────────────
-const DynamicField = ({ field, formData, handleChange }) => {
+const DynamicField = ({ field, formData, handleChange, studioUsers = [] }) => {
+    if (field.name === 'assignedLawyerId' || field.name === 'abogadoAsignado') {
+        return (
+            <div className={field.fullWidth ? 'col-span-2' : ''}>
+                <label htmlFor="assignedLawyerId" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    {field.label}
+                </label>
+                <select
+                    id="assignedLawyerId"
+                    name="assignedLawyerId"
+                    value={formData.assignedLawyerId || ''}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-medium"
+                >
+                    <option value="">Sin asignar / Seleccionar responsable...</option>
+                    {formData.assignedLawyerId && !studioUsers.some(u => u.id === formData.assignedLawyerId) && (
+                        <option value={formData.assignedLawyerId}>Responsable actual (no disponible)</option>
+                    )}
+                    {studioUsers.map(u => (
+                        <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                    ))}
+                </select>
+            </div>
+        );
+    }
     if (field.type === 'textarea') {
         return (
             <div className={field.fullWidth ? 'col-span-2' : ''}>
@@ -190,17 +214,40 @@ const CreateCase = () => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
     const [sections, setSections] = useState([]);
+    const [studioUsers, setStudioUsers] = useState([]);
+    const [caseStudioId, setCaseStudioId] = useState(undefined);
+    const [caseOwner, setCaseOwner] = useState(null);
+    const [usersError, setUsersError] = useState(null);
     const isEditMode = !!id;
 
     useEffect(() => {
-        fetchFormConfig();
-    }, []);
+        let cancelled = false;
+        const fetchUsers = async () => {
+            const targetStudioId = isEditMode ? caseStudioId : user?.studioId;
+            setUsersError(null);
+            setStudioUsers([]);
+            if (isEditMode && caseStudioId === undefined) return;
+            if (!targetStudioId) {
+                const owner = isEditMode ? caseOwner : user;
+                if (owner && ['ADMIN', 'LAWYER', 'SUPER_ADMIN'].includes(owner.role)) setStudioUsers([owner]);
+                return;
+            }
+            try {
+                const res = await fetch(api.studios.users(targetStudioId), {
+                    headers: { 'Authorization': 'Bearer ' + getToken() }
+                });
+                if (!res.ok) throw new Error('No se pudieron cargar los responsables del estudio.');
+                const data = await res.json();
+                if (!cancelled) setStudioUsers(data.filter(u => ['ADMIN', 'LAWYER', 'SUPER_ADMIN'].includes(u.role)));
+            } catch (err) {
+                if (!cancelled) setUsersError(err.message);
+            }
+        };
+        fetchUsers();
+        return () => { cancelled = true; };
+    }, [user, caseStudioId, caseOwner, isEditMode, getToken]);
 
-    useEffect(() => {
-        if (isEditMode && sections.length > 0) fetchCaseDetails();
-    }, [id, sections]);
-
-    const fetchFormConfig = async () => {
+    const fetchFormConfig = useCallback(async () => {
         try {
             const response = await fetch(api.formConfig.get, {
                 headers: {
@@ -236,9 +283,9 @@ const CreateCase = () => {
         } finally {
             if (!isEditMode) setLoading(false);
         }
-    };
+    }, [getToken, isEditMode]);
 
-    const fetchCaseDetails = async () => {
+    const fetchCaseDetails = useCallback(async () => {
         try {
             setLoading(true);
             const response = await fetch(api.cases.get(id), {
@@ -254,11 +301,19 @@ const CreateCase = () => {
 
             const data = await response.json();
 
+            setCaseStudioId(data.studioId || null);
+            setCaseOwner(data.createdBy || null);
             let parsedDetails = {};
             if (data.details) {
                 parsedDetails = typeof data.details === 'string' ? JSON.parse(data.details) : data.details;
             }
-            setFormData({ ...parsedDetails, clientName: data.clientName, title: data.title, description: data.description });
+            setFormData({
+                ...parsedDetails,
+                clientName: data.clientName,
+                title: data.title,
+                description: data.description,
+                assignedLawyerId: data.assignedLawyerId || data.assignedLawyer?.id || ''
+            });
             if (parsedDetails.scoring) setScoring(parsedDetails.scoring);
             if (parsedDetails.customItems) setCustomItems(parsedDetails.customItems);
         } catch (err) {
@@ -266,7 +321,15 @@ const CreateCase = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, getToken]);
+
+    useEffect(() => {
+        fetchFormConfig();
+    }, [fetchFormConfig]);
+
+    useEffect(() => {
+        if (isEditMode && sections.length > 0) fetchCaseDetails();
+    }, [isEditMode, sections, fetchCaseDetails]);
 
     const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -310,6 +373,7 @@ const CreateCase = () => {
                 description: formData.descripcion || formData.descripcionCaso || formData.description || 'Sin descripción',
                 fuero: formData.fuero || null,
                 score: totalScore > 0 ? totalScore : null,
+                assignedLawyerId: formData.assignedLawyerId || null,
                 details: { ...formData, scoring, customItems }
             };
 
@@ -546,8 +610,10 @@ const CreateCase = () => {
                                         field={field}
                                         formData={formData}
                                         handleChange={handleChange}
+                                        studioUsers={studioUsers}
                                     />
                                 ))}
+                                {usersError && <p role="alert" className="col-span-full text-sm text-red-600">{usersError}</p>}
                             </div>
                         )}
                         
@@ -577,7 +643,7 @@ const CreateCase = () => {
                     <span>Anterior</span>
                 </button>
                 <div className="hidden sm:flex items-center space-x-2">
-                    {sections.map((s, idx) => (
+                    {sections.map((s) => (
                         <div 
                             key={s.id} 
                             className={`w-2 h-2 rounded-full transition-all duration-300 ${activeSectionId === s.id ? 'w-8 bg-indigo-600' : 'bg-slate-200'}`}

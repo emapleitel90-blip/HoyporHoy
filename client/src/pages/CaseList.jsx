@@ -80,7 +80,7 @@ const CaseList = () => {
     useEffect(() => {
         const timeout = setTimeout(() => { fetchCases(); }, search ? 400 : 0);
         return () => clearTimeout(timeout);
-    }, [fetchCases]);
+    }, [fetchCases, search]);
 
     const clearFilters = () => {
         setSearch('');

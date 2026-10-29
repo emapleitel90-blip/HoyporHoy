@@ -1,0 +1,15 @@
+import express from 'express';
+import { protect } from '../middleware/authMiddleware.js';
+import { getFees, createAgreement, amendAgreement, recordPayment, reversePayment, upcomingFees } from '../controllers/feeController.js';
+import { authorizePaymentReceiptUpload, attachPaymentReceipt } from '../controllers/feeReceiptController.js';
+import { fileReceiver } from '../middleware/caseFileUpload.js';
+const router = express.Router();
+router.use(protect);
+router.get('/upcoming', upcomingFees);
+router.get('/case/:caseId', getFees);
+router.post('/case/:caseId', createAgreement);
+router.post('/case/:caseId/amendments', amendAgreement);
+router.post('/installments/:id/payments', recordPayment);
+router.post('/payments/:id/reversal', reversePayment);
+router.post('/payments/:id/receipt', authorizePaymentReceiptUpload, fileReceiver(3), attachPaymentReceipt);
+export default router;

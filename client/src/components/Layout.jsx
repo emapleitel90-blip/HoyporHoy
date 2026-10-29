@@ -8,19 +8,17 @@ import {
     Building2,
     LogOut,
     Menu,
-    X,
-    User,
     Settings,
     ChevronRight,
-    Bell,
     BookOpen,
-    CalendarCheck
+    CalendarCheck,
+    X
 } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 
 const Layout = () => {
     const { user, logout } = useAuth();
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const location = useLocation();
 
     const navItems = [
@@ -34,12 +32,17 @@ const Layout = () => {
 
     return (
         <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-900">
+            {isSidebarOpen && <button aria-label="Cerrar navegación lateral" onClick={() => setIsSidebarOpen(false)}
+                className="fixed inset-0 z-40 bg-black/40 lg:hidden" />}
             {/* Sidebar */}
             <aside
-                className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#0F172A] text-white transition-all duration-300 ease-in-out transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+                id="main-navigation"
+                onKeyDown={event => { if (event.key === 'Escape') setIsSidebarOpen(false); }}
+                className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#0F172A] text-white transition-all duration-300 ease-in-out transform ${isSidebarOpen ? 'translate-x-0' : 'hidden lg:block -translate-x-full'
                     } lg:relative lg:translate-x-0 border-r border-slate-800 shadow-2xl`}
             >
                 <div className="flex flex-col h-full">
+                    <button aria-label="Cerrar menú" onClick={() => setIsSidebarOpen(false)} className="absolute right-3 top-3 p-2 lg:hidden"><X size={20} /></button>
                     {/* Brand Logo */}
                     <div className="p-8">
                         <div className="flex items-center space-x-3 mb-2">
@@ -62,6 +65,7 @@ const Layout = () => {
                                 <Link
                                     key={item.path}
                                     to={item.path}
+                                    onClick={() => setIsSidebarOpen(false)}
                                     className={`flex items-center justify-between group px-4 py-3.5 rounded-xl transition-all duration-200 ${isActive
                                         ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
                                         : 'text-slate-400 hover:bg-white/5 hover:text-white'
@@ -107,7 +111,8 @@ const Layout = () => {
                 <header className="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200/60 h-20 flex items-center">
                     <div className="w-full flex items-center justify-between px-8">
                         <div className="flex items-center gap-4">
-                            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="lg:hidden text-slate-600 p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                            <button aria-label="Abrir menú" aria-controls="main-navigation" aria-expanded={isSidebarOpen}
+                                onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="lg:hidden text-slate-600 p-2 hover:bg-slate-100 rounded-lg transition-colors">
                                 <Menu size={24} />
                             </button>
                             <h1 className="text-xl font-bold text-slate-800 tracking-tight">
