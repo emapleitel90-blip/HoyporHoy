@@ -3,6 +3,7 @@ import prisma from '../utils/prismaClient.js';
 import { checkDeadlinesForUser } from '../skills/deadlineAgent.js';
 import { caseScope } from '../utils/caseAccess.js';
 import { argentinaDayBounds, parseDeadlineDate } from '../utils/argentinaTime.js';
+import { recordCaseActivity } from '../utils/recordCaseActivity.js';
 
 const deadlineInput = (body, creating = false) => {
     const data = {};
@@ -56,8 +57,12 @@ export const createDeadline = async (req, res, next) => {
         const { data, error } = deadlineInput(req.body, true);
         if (error) return res.status(400).json({ message: error });
 
-        const deadline = await prisma.deadline.create({
+        const deadline = await prisma.$transaction(async tx => {
+        const result = await tx.deadline.create({
             data: { ...data, caseId },
+        });
+        await recordCaseActivity(tx,req.user.id,caseId,'Vencimiento creado',result.title);
+        return result;
         });
         res.status(201).json(deadline);
     } catch (err) {
@@ -74,9 +79,14 @@ export const updateDeadline = async (req, res, next) => {
         const { data, error } = deadlineInput(req.body);
         if (error) return res.status(400).json({ message: error });
 
-        const updated = await prisma.deadline.update({
+        const updated = await prisma.$transaction(async tx => {
+        const result = await tx.deadline.update({
             where: { id },
             data,
+        });
+        if(Object.keys(data).some(key=>String(result[key])!==String(existing[key])))
+            await recordCaseActivity(tx,req.user.id,existing.caseId,'Vencimiento actualizado',result.title);
+        return result;
         });
         res.json(updated);
     } catch (err) {
@@ -91,7 +101,10 @@ export const deleteDeadline = async (req, res, next) => {
         const existing = await prisma.deadline.findFirst({ where: { id, case: caseScope(req.user) } });
         if (!existing) return res.status(404).json({ message: 'Plazo no encontrado' });
 
-        await prisma.deadline.delete({ where: { id } });
+        await prisma.$transaction(async tx=>{
+            await tx.deadline.delete({ where: { id } });
+            await recordCaseActivity(tx,req.user.id,existing.caseId,'Vencimiento eliminado',existing.title);
+        });
         res.json({ message: 'Plazo eliminado correctamente' });
     } catch (err) {
         next(err);

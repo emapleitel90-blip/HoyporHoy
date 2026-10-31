@@ -12,6 +12,7 @@ import {
     ChevronRight,
     BookOpen,
     CalendarCheck,
+    Bell,
     X
 } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
@@ -23,6 +24,7 @@ const Layout = () => {
 
     const navItems = [
         { name: 'Mi jornada', path: '/mi-jornada', icon: CalendarCheck },
+        { name: 'Actividad y notificaciones', path: '/notifications', icon: Bell },
         { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { name: 'Gestión de Expedientes', path: '/cases', icon: Briefcase },
         { name: 'Ayuda / Manual', path: '/help', icon: BookOpen },

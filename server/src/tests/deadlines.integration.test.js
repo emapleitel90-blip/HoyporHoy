@@ -28,6 +28,21 @@ const create = (body = {}, user = 'a', caseId = 'case-a') => auth('post', `/api/
     { title: 'Plazo de prueba', dueDate: '2026-10-28', ...body });
 const ids = items => items.map(item => item.id).sort();
 
+it('registra creación, cumplimiento y eliminación del plazo sin avisos de otros estudios ni duplicados por guardar lo mismo',async()=>{
+    const created=await create({title:'Plazo con actividad'});
+    expect(created.status).toBe(201);
+    const path=`/api/deadlines/${created.body.id}`;
+    expect((await auth('put',path,'a',{isCompleted:true})).status).toBe(200);
+    const before=await prisma.notification.count({where:{caseId:'case-a',type:'ACTIVITY'}});
+    expect((await auth('put',path,'a',{isCompleted:true})).status).toBe(200);
+    expect(await prisma.notification.count({where:{caseId:'case-a',type:'ACTIVITY'}})).toBe(before);
+    expect((await auth('delete',path,'a')).status).toBe(200);
+    const notices=await prisma.notification.findMany({where:{caseId:'case-a',type:'ACTIVITY',message:{contains:'Plazo con actividad'}}});
+    expect(notices).toHaveLength(6);
+    expect([...new Set(notices.map(n=>n.userId))].sort()).toEqual(['a','operator']);
+    expect(notices.filter(n=>n.title==='Vencimiento eliminado')).toHaveLength(2);
+});
+
 beforeAll(async () => {
     process.env.DATABASE_URL = `file:${path.join(directory, 'test.db').replaceAll('\\', '/')}`;
     process.env.JWT_SECRET = randomBytes(48).toString('hex');
@@ -219,7 +234,7 @@ describe('Avisos automáticos con almacenamiento real', () => {
         // SQLite's CURRENT_TIMESTAMP uses the real clock; align persisted rows to the frozen test clock.
         await prisma.notification.updateMany({ where: { caseId: 'agent-active' }, data: { createdAt: NOW } });
         expect((await checkUpcomingDeadlines()).notifications).toEqual([]);
-        expect(await prisma.notification.count()).toBe(2);
+        expect(await prisma.notification.count({where:{type:'DEADLINE_ALERT'}})).toBe(2);
     });
 
     it('un aviso del día anterior en Córdoba no bloquea el aviso de hoy', async () => {

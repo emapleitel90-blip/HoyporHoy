@@ -2,6 +2,7 @@ import { stat } from 'node:fs/promises';
 import prisma from '../utils/prismaClient.js';
 import { caseScope } from '../utils/caseAccess.js';
 import { AppError } from '../middleware/errorMiddleware.js';
+import { recordCaseActivity } from '../utils/recordCaseActivity.js';
 import {
     caseFilePath, caseFileUrl, isPrivateCaseFile, originalFileName,
     fileMime, validateCaseFileContent, removeStoredCaseFile,
@@ -19,10 +20,12 @@ export const addCaseFile = async (req, res, next) => {
             if (!currentUser) throw new AppError('La cuenta ya no está activa', 401);
             const caseItem = await tx.case.findFirst({ where: { id: req.params.id, ...caseScope(currentUser) } });
             if (!caseItem) throw new AppError('Expediente no disponible', 404);
-            return tx.caseFile.create({ data: {
+            const result = await tx.caseFile.create({ data: {
                 id: req.file.filename, name: originalFileName(req.file.originalname),
                 url: caseFileUrl(req.file.filename), caseId: caseItem.id,
             } });
+            await recordCaseActivity(tx,req.user.id,caseItem.id,'Archivo incorporado',result.name);
+            return result;
         });
         saved = true;
         res.status(201).json(file);
@@ -72,6 +75,7 @@ export const deleteCaseFile = async (req, res, next) => {
             const paymentReceipt = await tx.feePaymentReceipt.findFirst({ where: { fileId: file.id } });
             if (paymentReceipt) throw new AppError('El archivo forma parte del historial de un pago de honorarios y debe conservarse.', 409);
             await tx.caseFile.delete({ where: { id: file.id } });
+            await recordCaseActivity(tx,req.user.id,file.caseId,'Archivo eliminado',file.name);
         }); }
         catch (error) {
             if (error.code === 'P2003') throw new AppError('El archivo está vinculado a un seguimiento. Reabrí ese seguimiento y desvinculalo antes de eliminarlo.', 409);

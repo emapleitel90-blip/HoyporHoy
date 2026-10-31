@@ -30,6 +30,62 @@ const binary = (res, done) => {
     res.on('error', done);
 };
 
+it('conserva avisos de archivos y cambios para integrantes autorizados, y revierte la operación si el actor está inactivo',async()=>{
+    const result=await auth('post','/api/cases/case-a/files').attach('file',pdf,{filename:'actividad.pdf',contentType:'application/pdf'});
+    expect(result.status).toBe(201);
+    const notices=await prisma.notification.findMany({where:{caseId:'case-a',title:'Archivo incorporado',message:{contains:'actividad.pdf'}}});
+    expect(notices.map(n=>n.userId).sort()).toEqual(['a','operator']);
+    expect(notices.every(n=>n.message.startsWith('a ·'))).toBe(true);
+    expect((await auth('delete',`/api/cases/files/${result.body.id}`)).status).toBe(200);
+    expect(await prisma.notification.count({where:{caseId:'case-a',title:'Archivo eliminado',message:{contains:'actividad.pdf'}}})).toBe(2);
+    const {recordCaseActivity}=await import('../utils/recordCaseActivity.js');
+    const original=await prisma.case.findUnique({where:{id:'case-a'}});
+    await expect(prisma.$transaction(async tx=>{
+        await tx.case.update({where:{id:'case-a'},data:{title:'No debe confirmarse'}});
+        await recordCaseActivity(tx,'inactive','case-a','Cambio fallido');
+    })).rejects.toThrow('La cuenta ya no está activa');
+    expect((await prisma.case.findUnique({where:{id:'case-a'}})).title).toBe(original.title);
+    expect(await prisma.notification.count({where:{title:'Cambio fallido'}})).toBe(0);
+});
+
+it('registra los campos del expediente que cambiaron sin publicar sus valores ni notificar guardados vacíos',async()=>{
+    const created=await auth('post','/api/cases').send({title:'Expediente de actividad',clientName:'Cliente ficticio'});
+    expect(created.status).toBe(201);
+    const id=created.body.id;
+    expect(await prisma.notification.count({where:{caseId:id,title:'Expediente creado'}})).toBe(2);
+    expect((await auth('put',`/api/cases/${id}`).send({description:'Contenido privado de prueba',status:'CLOSED'})).status).toBe(200);
+    const notices=await prisma.notification.findMany({where:{caseId:id,title:'Expediente actualizado'}});
+    expect(notices).toHaveLength(2);
+    expect(notices[0].message).toContain('descripción');
+    expect(notices[0].message).toContain('estado');
+    expect(notices[0].message).not.toContain('Contenido privado');
+    expect((await auth('put',`/api/cases/${id}`).send({status:'CLOSED'})).status).toBe(200);
+    expect(await prisma.notification.count({where:{caseId:id,title:'Expediente actualizado'}})).toBe(2);
+    expect((await auth('put',`/api/cases/${id}`,'b').send({title:'No autorizado'})).status).toBe(403);
+    expect(await prisma.notification.count({where:{caseId:id}})).toBe(4);
+});
+
+it('importa un lote y su aviso sin datos privados, con destinatarios del estudio y reversión completa ante una fila inválida',async()=>{
+    const result=await auth('post','/api/cases/import').send({cases:[{title:'Importado actividad A',clientName:'Cliente privado',studioId:'b'}, {title:'Importado actividad B'}]});
+    expect(result.status).toBe(201);expect(result.body.count).toBe(2);
+    const created=await prisma.case.findMany({where:{title:{in:['Importado actividad A','Importado actividad B']}}});
+    expect(created).toHaveLength(2);expect(created.every(c=>c.studioId==='a'&&c.createdById==='a')).toBe(true);
+    expect(new Set(created.map(c=>c.caseNumber)).size).toBe(2);
+    const notices=await prisma.notification.findMany({where:{type:'IMPORT',caseId:{in:created.map(c=>c.id)}}});
+    expect(notices.map(n=>n.userId).sort()).toEqual(['a','operator']);
+    expect(notices.every(n=>n.message.includes('2 expedientes')&&!n.message.includes('Cliente privado'))).toBe(true);
+    const beforeCases=await prisma.case.count(),beforeNotices=await prisma.notification.count();
+    expect((await auth('post','/api/cases/import').send({cases:[{title:'No debe persistir'},{title:{invalid:true}}]})).status).toBe(500);
+    expect(await prisma.case.count()).toBe(beforeCases);expect(await prisma.notification.count()).toBe(beforeNotices);
+    expect((await auth('post','/api/cases/import').send({cases:[]})).status).toBe(400);
+    expect((await auth('post','/api/cases/import').send({cases:[null]})).status).toBe(400);
+    const solo=await auth('post','/api/cases/import','solo').send({cases:[{title:'Importado independiente'}]});
+    expect(solo.status).toBe(201);
+    const independent=await prisma.case.findFirst({where:{title:'Importado independiente'}});
+    expect(independent.studioId).toBeNull();
+    expect((await prisma.notification.findMany({where:{caseId:independent.id,type:'IMPORT'}})).map(n=>n.userId)).toEqual(['solo']);
+});
+
 beforeAll(async () => {
     mkdirSync(storage);
     process.env.DATABASE_URL = `file:${path.join(directory, 'test.db').replaceAll('\\', '/')}`;

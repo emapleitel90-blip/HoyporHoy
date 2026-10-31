@@ -1,6 +1,7 @@
 import { searchJurisprudencia, officialSource } from '../skills/saijSearcher.js';
 import prisma from '../utils/prismaClient.js';
 import { caseScope } from '../utils/caseAccess.js';
+import { recordCaseActivity } from '../utils/recordCaseActivity.js';
 
 export const searchJurisprudenceController = async (req, res, next) => {
     try {
@@ -48,10 +49,14 @@ export const saveJurisprudenceInsight = async (req, res, next) => {
         const reference = { version: 1, titulo: insightData.titulo.trim(), tribunal: insightData.tribunal.trim(),
             fecha: date, extracto: (insightData.extracto || '').trim(), ...source,
             verification: 'USER_PROVIDED', registeredBy: req.user.id, registeredAt: new Date().toISOString() };
-        const record = await prisma.timelineEvent.create({ data: {
+        const record = await prisma.$transaction(async tx=>{
+        const item = await tx.timelineEvent.create({ data: {
             title: 'Referencia jurisprudencial · ' + source.source, description: JSON.stringify(reference),
             type: 'JURISPRUDENCIA', eventDate: new Date(), caseId,
         } });
+        await recordCaseActivity(tx,req.user.id,caseId,'Referencia jurídica incorporada',source.source+' · '+reference.titulo);
+        return item;
+        });
         res.status(201).json({ id: record.id, ...reference });
     } catch (err) { next(err); }
 };

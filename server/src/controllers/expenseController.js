@@ -2,6 +2,7 @@ import { stat } from 'node:fs/promises';
 import prisma from '../utils/prismaClient.js';
 import { caseScope, participantScope } from '../utils/caseAccess.js';
 import { AppError } from '../middleware/errorMiddleware.js';
+import { recordCaseActivity } from '../utils/recordCaseActivity.js';
 import {
     caseFilePath, caseFileUrl, isPrivateCaseFile, originalFileName,
     validateCaseFileContent, removeStoredCaseFile,
@@ -104,9 +105,10 @@ export const createExpense = async (req, res, next) => {
             }) : null;
             if (recipient) await tx.notification.create({ data: {
                 title: '💰 Nuevo gasto registrado — ' + caseItem.caseNumber,
-                message: 'Gasto: "' + expense.description + '" por $' + expense.amount.toLocaleString('es-AR') + ' (' + expense.type + '). Estado: Pendiente de reintegro.',
+                message: req.user.name + ' · Gasto: "' + expense.description + '" por $' + expense.amount.toLocaleString('es-AR') + ' (' + expense.type + '). Estado: Pendiente de reintegro.',
                 type: 'EXPENSE', userId: recipient.id, caseId: caseItem.id,
             } });
+            await recordCaseActivity(tx,req.user.id,caseItem.id,'Gasto registrado',expense.description,recipient?[recipient.id]:[]);
             return savedExpense(expense, receipt);
         });
         saved = true;
@@ -135,6 +137,7 @@ export const attachExpenseReceipt = async (req, res, next) => {
             const updated = await tx.expense.updateMany({ where: { id: expense.id, updatedAt: expense.updatedAt },
                 data: { receiptUrl: receipt.url, updatedAt } });
             if (updated.count !== 1) throw new AppError('El gasto cambió. Actualizá e intentá de nuevo', 409);
+            await recordCaseActivity(tx,req.user.id,expense.caseId,'Comprobante de gasto incorporado',receipt.name);
             return savedExpense(await tx.expense.findUnique({ where: { id: expense.id } }), receipt);
         });
         saved = true;
@@ -150,7 +153,12 @@ export const updateExpense = async (req, res, next) => {
         const existing = await prisma.expense.findFirst({ where: { id: req.params.id, case: caseScope(req.user) } });
         if (!existing) throw new AppError('Gasto no disponible', 404);
         const data = expenseInput(req.body);
-        const updated = await prisma.expense.update({ where: { id: existing.id }, data });
+        const updated = await prisma.$transaction(async tx=>{
+            const result=await tx.expense.update({ where: { id: existing.id }, data });
+            if(Object.keys(data).some(key=>String(result[key])!==String(existing[key])))
+                await recordCaseActivity(tx,req.user.id,existing.caseId,'Gasto actualizado',result.description);
+            return result;
+        });
         res.json((await withReceipts([updated]))[0]);
     } catch (error) { next(error); }
 };

@@ -2,6 +2,7 @@ import prisma from '../utils/prismaClient.js';
 import { caseScope, REVIEWER_ROLES } from '../utils/caseAccess.js';
 import { AppError } from '../middleware/errorMiddleware.js';
 import { checkText } from './writingController.js';
+import { recordCaseActivity } from '../utils/recordCaseActivity.js';
 const scopeFor = async (db, user, caseId) => {
     const item = await db.case.findFirst({where:{id:caseId,...caseScope(user)}});
     if (!item) throw new AppError('Expediente no disponible',404);
@@ -34,7 +35,9 @@ export const createWritingTemplate = handle(async(req,res) => {
         const scope=await scopeFor(tx,user,req.params.caseId);
         const prior=await tx.writingTemplate.findUnique({where:{scope_requestId:{scope,requestId}}});
         if(prior){ if(Object.keys(data).some(key=>data[key]!==prior[key]))throw new AppError('La solicitud corresponde a otro modelo',409); return {created:false,item:prior}; }
-        return {created:true,item:await tx.writingTemplate.create({data:{...data,scope,requestId,createdById:user.id,createdByName:user.name}})};
+        const item=await tx.writingTemplate.create({data:{...data,scope,requestId,createdById:user.id,createdByName:user.name}});
+        await recordCaseActivity(tx,user.id,req.params.caseId,'Modelo incorporado a la biblioteca',item.title);
+        return {created:true,item};
     });
     res.status(result.created?201:200).json(result.item);
 });

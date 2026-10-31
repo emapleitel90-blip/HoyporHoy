@@ -1,6 +1,8 @@
 # Paquete para revisión técnica — 29/10/2026
 
-Estado: preparado localmente. No enviado ni aprobado por Bartolito. Esta revisión debe hacerse sobre los archivos identificados por `MANIFEST.json` del paquete, porque la carpeta de trabajo contiene cambios sin commit.
+Estado actualizado el 31/10/2026: publicado para revisión en la rama `codex/revision-integral-20261029`, PR #2. No se recibió aprobación de Bartolito. Para revisar la entrega de GitHub usar el commit actual del PR; el `MANIFEST.json` del ZIP local identifica únicamente el paquete original del 29/10 y no incluye las ampliaciones posteriores. La carpeta de trabajo mantiene cambios sin commit local.
+
+La actualización de actividad y notificaciones se describe en `ACTUALIZACION_GITHUB_2026-10-31.md` y `ENTREGA_ACTIVIDAD_NOTIFICACIONES.md`.
 
 ## Qué revisar primero
 

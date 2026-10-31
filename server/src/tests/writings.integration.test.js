@@ -51,6 +51,7 @@ beforeAll(async () => {
     tokens = Object.fromEntries((await prisma.user.findMany()).map(user => [user.id, jwt.sign({ id: user.id }, process.env.JWT_SECRET)]));
     app = express(); app.use(express.json());
     app.use('/api/writings', (await import('../routes/writingRoutes.js')).default);
+    app.use('/api/notifications', (await import('../routes/notificationRoutes.js')).default);
     app.use((await import('../middleware/errorMiddleware.js')).errorHandler);
 }, 30000);
 
@@ -67,14 +68,58 @@ afterAll(async () => {
 });
 
 describe('Escritos manuales con versiones persistentes y Word privado', () => {
+    it('pagina avisos antiguos sin repetir empates de fecha y rechaza cursores ajenos',async()=>{
+        const prefix=randomUUID();const date=new Date('2035-01-01T00:00:00Z');
+        for(let index=0;index<53;index++)await prisma.notification.create({data:{id:`${prefix}-${String(index).padStart(3,'0')}`,userId:'lawyer',caseId:'case-a',title:'Aviso de página',message:'Ficticio',createdAt:date}});
+        const first=await auth('get','/api/notifications','lawyer');
+        expect(first.status).toBe(200);expect(first.body.notifications).toHaveLength(50);
+        const second=await auth('get',`/api/notifications?cursor=${first.body.nextCursor}`,'lawyer');
+        expect(second.status).toBe(200);
+        expect(second.body.notifications.filter(n=>n.id.startsWith(prefix))).toHaveLength(3);
+        expect(second.body.notifications.some(n=>first.body.notifications.some(old=>old.id===n.id))).toBe(false);
+        expect((await auth('get',`/api/notifications?cursor=${first.body.nextCursor}`,'other')).status).toBe(404);
+        expect((await auth('get','/api/notifications?cursor=','lawyer')).status).toBe(400);
+        expect((await auth('get','/api/notifications?cursor[in]=fake','lawyer')).status).toBe(400);
+        await prisma.notification.deleteMany({where:{id:{startsWith:prefix}}});
+    });
+    it('notifica cambios por usuario sin duplicarlos y retira acceso al cambiar el estudio del expediente',async()=>{
+        const task=await prisma.task.create({data:{title:'Tarea para aviso',caseId:'case-a',assigneeId:'operator',reviewerId:'lawyer',createdById:'lawyer',
+            events:{create:{userId:'operator',action:'SUBMITTED',toStatus:'SUBMITTED'}}}});
+        const first=await auth('get','/api/notifications','lawyer');
+        expect(first.status).toBe(200);
+        const notice=first.body.notifications.find(n=>n.message.includes('Tarea para aviso'));
+        expect(notice).toMatchObject({title:'Escrito o tarea entregada',isRead:false,caseId:'case-a'});
+        expect(notice.message).toContain('Persona operator');
+        const repeat=await auth('get','/api/notifications','lawyer');
+        expect(repeat.body.notifications.filter(n=>n.id===notice.id)).toHaveLength(1);
+        expect((await auth('put',`/api/notifications/${notice.id}/read`,'other').send({})).status).toBe(404);
+        expect((await auth('put',`/api/notifications/${notice.id}/read`,'lawyer').send({})).status).toBe(200);
+        expect((await auth('get','/api/notifications','lawyer')).body.notifications.find(n=>n.id===notice.id).isRead).toBe(true);
+        expect((await auth('get','/api/notifications','operator')).body.notifications.find(n=>n.message.includes('Tarea para aviso')).isRead).toBe(false);
+        expect((await auth('get','/api/notifications','other')).body.notifications).toEqual([]);
+        expect((await auth('get','/api/notifications','solo')).body.notifications).toEqual([]);
+        await prisma.case.update({where:{id:'case-a'},data:{deletedAt:new Date()}});
+        expect((await auth('get','/api/notifications','lawyer')).body.notifications.some(n=>n.id===notice.id)).toBe(false);
+        expect((await auth('put',`/api/notifications/${notice.id}/read`,'lawyer').send({})).status).toBe(404);
+        await prisma.case.update({where:{id:'case-a'},data:{deletedAt:null}});
+        await prisma.taskEvent.deleteMany({where:{taskId:task.id}});await prisma.task.delete({where:{id:task.id}});
+    });
     it('comparte modelos solo dentro del estudio y reserva su creación a revisores', async () => {
         const url='/api/writings/templates/case/case-a';
         const model={title:'Modelo ficticio',content:'Cliente: {{cliente}}\nObjeto: {{objeto}}',jurisdiction:'Córdoba',fuero:'Civil',kind:'Escrito',requestId:randomUUID()};
         expect((await auth('post',url,'operator').send(model)).status).toBe(403);
         const created=await auth('post',url,'lawyer').send(model);
         expect(created.status).toBe(201);
+        const modelNotices=()=>prisma.notification.findMany({where:{caseId:'case-a',title:'Modelo incorporado a la biblioteca',message:{contains:model.title}}});
+        const initialNotices=await modelNotices();
+        expect(initialNotices.length).toBeGreaterThan(0);
+        expect(initialNotices.every(n=>n.message==='Persona lawyer · Modelo ficticio')).toBe(true);
+        expect(initialNotices.map(n=>n.userId)).toContain('operator');
+        expect(initialNotices.map(n=>n.userId)).not.toContain('other');
+        expect(initialNotices.map(n=>n.userId)).not.toContain('inactive');
         const replay=await auth('post',url,'lawyer').send(model);
         expect(replay.status).toBe(200);expect(replay.body.id).toBe(created.body.id);
+        expect(await modelNotices()).toHaveLength(initialNotices.length);
         expect((await auth('post',url,'lawyer').send({...model,content:'Distinto'})).status).toBe(409);
         expect((await auth('get',url,'operator')).body.map(item=>item.id)).toContain(created.body.id);
         expect((await auth('get',url,'other')).status).toBe(404);

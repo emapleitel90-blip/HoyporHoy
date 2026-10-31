@@ -1011,6 +1011,10 @@ describe('Aislamiento de documentos generados y fuentes guardadas', () => {
         expect(saved.status).toBe(201);
         expect(saved.body).toMatchObject({ ...insightData, verification: 'USER_PROVIDED', registeredBy: 'a' });
         expect(saved.body.registeredAt).toBeTruthy();
+        const notices=await prisma.notification.findMany({where:{caseId:'case-a',title:'Referencia jurídica incorporada',message:{contains:insightData.titulo}}});
+        expect(notices.map(n=>n.userId).sort()).toEqual(['a','operator']);
+        expect(notices.every(n=>n.message.startsWith('a ·'))).toBe(true);
+        expect(notices.every(n=>!n.message.includes(insightData.extracto))).toBe(true);
         await prisma.$disconnect();
         const listed = await auth('get', '/api/jurisprudencia/case/case-a');
         expect(listed.body).toContainEqual(saved.body);

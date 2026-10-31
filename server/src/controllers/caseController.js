@@ -1,5 +1,8 @@
 import prisma from '../utils/prismaClient.js';
 import { participantScope, REVIEWER_ROLES } from '../utils/caseAccess.js';
+import { recordCaseActivity } from '../utils/recordCaseActivity.js';
+import { randomUUID } from 'node:crypto';
+import { AppError } from '../middleware/errorMiddleware.js';
 
 // Helper: build tenant-scoped where clause.
 // SUPER_ADMIN can see everything; everyone else is restricted to their studio.
@@ -109,7 +112,8 @@ export const createCase = async (req, res) => {
             validAssignedLawyerId = targetUser.id;
         }
 
-        const newCase = await prisma.case.create({
+        const newCase = await prisma.$transaction(async tx=>{
+        const result = await tx.case.create({
             data: {
                 caseNumber,
                 title: title || (clientName ? `Caso de ${clientName}` : 'Nuevo Caso'),
@@ -127,6 +131,9 @@ export const createCase = async (req, res) => {
                 assignedLawyer: { select: { id: true, name: true, email: true, role: true } },
                 createdBy: { select: { id: true, name: true, email: true } }
             }
+        });
+        await recordCaseActivity(tx,req.user.id,result.id,'Expediente creado',result.caseNumber);
+        return result;
         });
         res.status(201).json(newCase);
     } catch (error) {
@@ -177,7 +184,8 @@ export const updateCase = async (req, res) => {
 
         const detailsString = typeof details === 'object' ? JSON.stringify(details) : details;
 
-        const updatedCase = await prisma.case.update({
+        const updatedCase = await prisma.$transaction(async tx=>{
+        const result = await tx.case.update({
             where: { id },
             data: {
                 title,
@@ -195,6 +203,11 @@ export const updateCase = async (req, res) => {
             }
         });
 
+        const names={title:'título',clientName:'cliente',details:'datos del formulario',description:'descripción',status:'estado',fuero:'fuero',score:'puntaje',assignedLawyerId:'abogado responsable'};
+        const changes=Object.keys(names).filter(key=>result[key]!==existingCase[key]).map(key=>names[key]);
+        if(changes.length)await recordCaseActivity(tx,req.user.id,id,'Expediente actualizado','Cambios en: '+changes.join(', '));
+        return result;
+        });
         res.json(updatedCase);
     } catch (error) {
         console.error('Error updating case:', error);
@@ -241,16 +254,16 @@ export { addCaseFile, deleteCaseFile } from './caseFileController.js';
 export const importCases = async (req, res) => {
     try {
         const { cases } = req.body;
-        if (!cases || !Array.isArray(cases)) {
-            return res.status(400).json({ message: 'Se requiere un arreglo de casos' });
+        if (!Array.isArray(cases) || !cases.length || cases.some(item=>!item||typeof item!=='object'||Array.isArray(item))) {
+            return res.status(400).json({ message: 'Se requiere un arreglo con expedientes válidos para importar' });
         }
-
-        const studioId = req.user.studioId || null;
-        
-        // Prepare the array for transaction
-        const operations = cases.map(c => {
-            const caseNumber = `CAS-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-            return prisma.case.create({
+        const importedCases = await prisma.$transaction(async tx=>{
+        const actor=await tx.user.findFirst({where:{id:req.user.id,deletedAt:null}});
+        if(!actor)throw new AppError('La cuenta ya no está activa',401);
+        const results=[];
+        for(const c of cases){
+            const caseNumber = `CAS-${Date.now()}-${randomUUID()}`;
+            results.push(await tx.case.create({
                 data: {
                     caseNumber,
                     title: c.title || (c.clientName ? `Caso de ${c.clientName}` : 'Caso Importado'),
@@ -259,14 +272,15 @@ export const importCases = async (req, res) => {
                     status: c.status || 'OPEN',
                     fuero: c.fuero || null,
                     score: c.score ? Number(c.score) : null,
-                    studioId: studioId,
-                    createdById: req.user.id
+                    studioId: actor.studioId || null,
+                    createdById: actor.id
                 }
-            });
-        });
-
-        // Execute all creates in a transaction
-        const importedCases = await prisma.$transaction(operations);
+            }));
+        }
+        await recordCaseActivity(tx,actor.id,results[0].id,'Importación de expedientes completada',
+            `${results.length} expedientes incorporados. Consultalos en Gestión de Expedientes.`,[],'IMPORT');
+        return results;
+        },{timeout:30000});
 
         res.status(201).json({ 
             message: `${importedCases.length} casos importados exitosamente`,
@@ -274,6 +288,6 @@ export const importCases = async (req, res) => {
         });
     } catch (error) {
         console.error('Error importing cases:', error);
-        res.status(500).json({ message: 'Error interno al importar casos' });
+        res.status(error.statusCode||500).json({ message: error.isOperational?error.message:'Error interno al importar casos' });
     }
 };
