@@ -7,6 +7,7 @@ const mockUpdate = vi.fn();
 
 vi.mock('../utils/prismaClient.js', () => ({
     default: {
+        $transaction: callback => callback({deadline:{update:(...args)=>mockUpdate(...args)}}),
         deadline: {
             findMany: (...args) => mockFindMany(...args),
             findFirst: (...args) => mockFindFirst(...args),
@@ -22,6 +23,8 @@ vi.mock('../utils/prismaClient.js', () => ({
 vi.mock('../skills/deadlineAgent.js', () => ({
     checkDeadlinesForUser: vi.fn().mockResolvedValue([]),
 }));
+// Notification fan-out is covered with the real database in deadlines.integration.test.js.
+vi.mock('../utils/recordCaseActivity.js',()=>({recordCaseActivity:vi.fn().mockResolvedValue(undefined)}));
 
 // Importar después del mock
 const { getMyDay, updateDeadline } = await import('../controllers/deadlineController.js');

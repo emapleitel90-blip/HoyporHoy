@@ -388,3 +388,14 @@ model WritingTemplate {
   createdAt DateTime @default(now())
   @@unique([scope, requestId])
 }
+
+model CaseImportRequest {
+  id String @id @default(uuid())
+  userId String
+  requestId String
+  scope String
+  payloadHash String
+  count Int
+  createdAt DateTime @default(now())
+  @@unique([userId, requestId])
+}

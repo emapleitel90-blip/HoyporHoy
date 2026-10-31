@@ -2,7 +2,7 @@ import { beforeAll, afterAll, describe, it, expect, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -84,6 +84,36 @@ it('importa un lote y su aviso sin datos privados, con destinatarios del estudio
     const independent=await prisma.case.findFirst({where:{title:'Importado independiente'}});
     expect(independent.studioId).toBeNull();
     expect((await prisma.notification.findMany({where:{caseId:independent.id,type:'IMPORT'}})).map(n=>n.userId)).toEqual(['solo']);
+});
+
+it('confirma el reintento de una importación sin duplicar expedientes ni avisos y rechaza cambios de lote o estudio',async()=>{
+    const requestId=randomUUID();const body={requestId,cases:[{title:'Lote de reintento'}]};
+    const first=await auth('post','/api/cases/import').send(body);
+    expect(first.status).toBe(201);expect(first.body).toMatchObject({requestId,count:1,replayed:false});
+    const counts=await snapshot();const cases=await prisma.case.count();
+    await prisma.$disconnect();
+    const retry=await auth('post','/api/cases/import').send(body);
+    expect(retry.status).toBe(200);expect(retry.body).toMatchObject({requestId,count:1,replayed:true});
+    expect(await snapshot()).toEqual(counts);expect(await prisma.case.count()).toBe(cases);
+    expect((await auth('post','/api/cases/import').send({...body,cases:[{title:'Otro lote'}]})).status).toBe(409);
+    await prisma.user.update({where:{id:'a'},data:{studioId:'b'}});
+    expect((await auth('post','/api/cases/import').send(body)).status).toBe(409);
+    await prisma.user.update({where:{id:'a'},data:{studioId:'a'}});
+    expect((await auth('post','/api/cases/import').send({...body,requestId:'invalid'})).status).toBe(400);
+    expect(await prisma.case.count()).toBe(cases);
+});
+
+it('conserva un solo lote y un solo aviso por destinatario ante envíos simultáneos con la misma solicitud',async()=>{
+    const body={requestId:randomUUID(),cases:[{title:'Importación simultánea ficticia'}]};
+    const responses=await Promise.all([auth('post','/api/cases/import').send(body),auth('post','/api/cases/import').send(body)]);
+    expect(responses.every(r=>[200,201,409].includes(r.status))).toBe(true);
+    const confirmed=await auth('post','/api/cases/import').send(body);
+    expect([200,201]).toContain(confirmed.status);
+    expect((await auth('post','/api/cases/import').send(body)).status).toBe(200);
+    const imported=await prisma.case.findMany({where:{title:body.cases[0].title}});
+    expect(imported).toHaveLength(1);
+    expect(await prisma.caseImportRequest.count({where:{userId:'a',requestId:body.requestId}})).toBe(1);
+    expect(await prisma.notification.count({where:{caseId:imported[0].id,type:'IMPORT'}})).toBe(2);
 });
 
 beforeAll(async () => {

@@ -13,17 +13,21 @@ export const DataImportModal = ({ isOpen, onClose, onImportSuccess }) => {
     const [step, setStep] = useState(1);
     const fileInputRef = useRef(null);
     const loadVersion = useRef(0);
+    const requestId = useRef(null);
+    const submitting = useRef(false);
     const { showToast } = useToast();
 
     if (!isOpen) return null;
 
     const handleFileChange = async (e) => {
+        if(loading)return;
         const selectedFile = e.target.files[0];
         if (!selectedFile) return;
         e.target.value = '';
 
         const fileExt = selectedFile.name.split('.').pop().toLowerCase();
         const version = ++loadVersion.current;
+        requestId.current=null;
         setPreviewData([]);
         setStep(1);
         if (!['csv', 'xlsx', 'xls'].includes(fileExt)) {
@@ -62,7 +66,8 @@ export const DataImportModal = ({ isOpen, onClose, onImportSuccess }) => {
     };
 
     const confirmImport = async () => {
-        if (loading || !previewData || previewData.length === 0) return;
+        if (loading || submitting.current || !previewData || previewData.length === 0) return;
+        submitting.current=true;
         setLoading(true);
 
         try {
@@ -84,21 +89,25 @@ export const DataImportModal = ({ isOpen, onClose, onImportSuccess }) => {
             }
 
             const token = localStorage.getItem('lyp_token');
-            const res = await axios.post(api.cases.import, { cases: mappedCases }, {
+            requestId.current ||= crypto.randomUUID();
+            const res = await axios.post(api.cases.import, { cases: mappedCases,requestId:requestId.current }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            if(res.data?.requestId!==requestId.current||res.data?.count!==mappedCases.length)throw new Error('No se pudo confirmar la importación. Conservamos la vista previa para reintentar.');
 
             showToast(res.data.message, 'success');
             onImportSuccess();
             closeModal();
         } catch (error) {
-            showToast(error.response?.data?.message || 'Error al importar datos', 'error');
+            showToast(error.response?.data?.message || 'No se pudo confirmar la importación. Conservamos la vista previa: reintentá sin volver a elegir el archivo.', 'error');
         } finally {
+            submitting.current=false;
             setLoading(false);
         }
     };
 
     const closeModal = () => {
+        requestId.current=null;
         loadVersion.current++;
         setParsing(false);
         setFile(null);

@@ -72,7 +72,7 @@ npm run build
 
 Las pruebas del servidor usan bases temporales. Las pruebas del cliente verifican la recuperación de Configuración, la importación real de CSV/XLS/XLSX, la navegación con sesión, los comprobantes de gastos y el circuito de honorarios. Los comprobantes usan el mismo almacenamiento privado de los expedientes; ver [la entrega de gastos](ENTREGA_COMPROBANTES_GASTOS.md) y [la entrega de pagos](ENTREGA_COMPROBANTES_PAGOS.md) para los estados anteriores y los reemplazos.
 
-La última validación conjunta local del 29/10/2026 completó 351 pruebas de servidor y 103 de cliente con un trabajador (454 en total). Después del ajuste final del descarte se repitieron las 7 pruebas de biblioteca, todas aprobadas. ESLint y la compilación final también pasaron. La revisión de entregas sobre versiones exactas se documenta en [su entrega](ENTREGA_REVISION_VERSIONES.md):
+La última validación completa local del 31/10/2026 aprobó 359 pruebas de servidor y 112 de cliente (471 en total), con un trabajador y límite de 30 segundos por prueba. ESLint y compilación aprobados. Vitest del servidor incluye únicamente src/tests para excluir los paquetes archivados de revisión. La revisión de entregas sobre versiones exactas se documenta en [su entrega](ENTREGA_REVISION_VERSIONES.md):
 
 ```bash
 npm --prefix server test -- --maxWorkers=1
@@ -97,7 +97,9 @@ SheetJS se instala desde la URL oficial de la versión 0.20.3, registrada en `cl
 - **Rectificación de pagos**: Anulación con motivo, autor y fecha, conservando el pago original y actualizando saldos y recordatorios. Ver [alcance y pruebas](ENTREGA_RECTIFICACION_PAGOS.md).
 - **Modificación de acuerdos**: Ajustes de descripción, importes y vencimientos, cuotas nuevas e historial de antes y después, con protección frente a cambios simultáneos. Ver [entrega y validación](ENTREGA_MODIFICACION_ACUERDOS.md).
 - **Comprobantes de pagos**: Archivos privados vinculados al pago, descarga autenticada e historial de reemplazos. Ver [alcance y estado de validación](ENTREGA_COMPROBANTES_PAGOS.md).
-- **Escritos y versiones**: Texto manual por expediente, historial inmutable, restauración, comparación y Word de la versión elegida. La aprobación por tarea corresponde a la parte siguiente. Ver [entrega y verificaciones](ENTREGA_ESCRITOS_VERSIONADOS.md).
+- **Escritos y versiones**: Texto manual por expediente, historial inmutable, restauración, comparación y Word de la versión elegida. La revisión por tarea identifica la versión exacta entregada. Ver [escritos](ENTREGA_ESCRITOS_VERSIONADOS.md) y [revisión](ENTREGA_REVISION_VERSIONES.md).
+- **Actividad y notificaciones**: Avisos por usuario, filtros y consulta de páginas anteriores. Ver [alcance](ENTREGA_ACTIVIDAD_NOTIFICACIONES.md).
+- **Reintentos de importación**: Identificador de solicitud persistido para confirmar el mismo lote sin duplicados al reintentar desde la vista previa. Ver [migración y límites](ENTREGA_REINTENTOS_IMPORTACION.md).
 
 ## Despliegue (Railway/Render)
 

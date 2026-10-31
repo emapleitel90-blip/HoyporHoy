@@ -38,7 +38,7 @@ const open = () => {
 beforeEach(() => {
     vi.resetAllMocks();
     localStorage.setItem('lyp_token', 'test-token');
-    axios.post.mockResolvedValue({ data: { message: '2 casos importados exitosamente' } });
+    axios.post.mockImplementation(async (_,body)=>({data:{message:body.cases.length+' casos importados exitosamente',count:body.cases.length,requestId:body.requestId}}));
 });
 afterEach(() => {
     cleanup();
@@ -47,6 +47,18 @@ afterEach(() => {
 });
 
 describe('Importación con lectores reales de CSV y Excel', () => {
+    it('no informa éxito ante una respuesta que no confirma la solicitud y conserva el identificador al reintentar',async()=>{
+        axios.post.mockResolvedValueOnce({data:{message:'Éxito no confirmado',count:2,requestId:'incorrecto'}});
+        const callbacks=open();choose(makeFile('csv'));
+        await screen.findByText('2 filas detectadas');
+        fireEvent.click(screen.getByRole('button',{name:'Confirmar e Importar'}));
+        await waitFor(()=>expect(showToast).toHaveBeenCalledWith(expect.stringContaining('No se pudo confirmar'),'error'));
+        expect(callbacks.onImportSuccess).not.toHaveBeenCalled();expect(callbacks.onClose).not.toHaveBeenCalled();
+        const id=axios.post.mock.calls[0][1].requestId;
+        fireEvent.click(screen.getByRole('button',{name:'Confirmar e Importar'}));
+        await waitFor(()=>expect(callbacks.onImportSuccess).toHaveBeenCalledTimes(1));
+        expect(axios.post.mock.calls[1][1].requestId).toBe(id);
+    });
     it.each(['csv', 'xlsx', 'xls'])('previsualiza e importa %s conservando tildes, columnas y sesión', async extension => {
         const callbacks = open();
         choose(makeFile(extension));
@@ -54,7 +66,7 @@ describe('Importación con lectores reales de CSV y Excel', () => {
         expect(screen.getByText('María Pérez')).toBeTruthy();
         fireEvent.click(screen.getByRole('button', { name: 'Confirmar e Importar' }));
         await waitFor(() => expect(axios.post).toHaveBeenCalledWith(api.cases.import,
-            { cases: expectedCases }, { headers: { Authorization: 'Bearer test-token' } }));
+            { cases: expectedCases,requestId:expect.any(String) }, { headers: { Authorization: 'Bearer test-token' } }));
         expect(callbacks.onImportSuccess).toHaveBeenCalledTimes(1);
         expect(callbacks.onClose).toHaveBeenCalledTimes(1);
         expect(showToast).toHaveBeenCalledWith('2 casos importados exitosamente', 'success');
@@ -67,12 +79,12 @@ describe('Importación con lectores reales de CSV y Excel', () => {
         await screen.findByText('2 filas detectadas');
         fireEvent.click(screen.getByRole('button', { name: 'Confirmar e Importar' }));
         await waitFor(() => expect(axios.post).toHaveBeenCalledWith(api.cases.import,
-            { cases: expectedCases }, expect.any(Object)));
+            { cases: expectedCases,requestId:expect.any(String) }, expect.any(Object)));
     });
 
     it('conserva la vista previa cuando falla la API y permite reintentar', async () => {
         axios.post.mockRejectedValueOnce({ response: { data: { message: 'No se pudo importar' } } })
-            .mockResolvedValueOnce({ data: { message: 'Importado' } });
+            .mockImplementationOnce(async(_,body)=>({data:{message:'Importado',count:body.cases.length,requestId:body.requestId}}));
         const callbacks = open();
         choose(makeFile('csv'));
         await screen.findByText('2 filas detectadas');
@@ -83,6 +95,7 @@ describe('Importación con lectores reales de CSV y Excel', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Confirmar e Importar' }));
         await waitFor(() => expect(callbacks.onImportSuccess).toHaveBeenCalledTimes(1));
         expect(axios.post).toHaveBeenCalledTimes(2);
+        expect(axios.post.mock.calls[1][1].requestId).toBe(axios.post.mock.calls[0][1].requestId);
     });
 
     it.each([
@@ -121,6 +134,6 @@ describe('Importación con lectores reales de CSV y Excel', () => {
         expect(screen.queryByText('Anterior')).toBeNull();
         fireEvent.click(screen.getByRole('button', { name: 'Confirmar e Importar' }));
         await waitFor(() => expect(axios.post).toHaveBeenCalledWith(api.cases.import,
-            { cases: expectedCases }, expect.any(Object)));
+            { cases: expectedCases,requestId:expect.any(String) }, expect.any(Object)));
     });
 });

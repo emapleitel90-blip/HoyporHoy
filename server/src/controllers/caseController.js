@@ -1,7 +1,7 @@
 import prisma from '../utils/prismaClient.js';
 import { participantScope, REVIEWER_ROLES } from '../utils/caseAccess.js';
 import { recordCaseActivity } from '../utils/recordCaseActivity.js';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { AppError } from '../middleware/errorMiddleware.js';
 
 // Helper: build tenant-scoped where clause.
@@ -257,9 +257,21 @@ export const importCases = async (req, res) => {
         if (!Array.isArray(cases) || !cases.length || cases.some(item=>!item||typeof item!=='object'||Array.isArray(item))) {
             return res.status(400).json({ message: 'Se requiere un arreglo con expedientes válidos para importar' });
         }
+        const requestId=req.body.requestId;
+        if(requestId!==undefined&&(typeof requestId!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)))
+            return res.status(400).json({message:'Identificador de importación inválido'});
+        const payloadHash=createHash('sha256').update(JSON.stringify(cases)).digest('hex');
         const importedCases = await prisma.$transaction(async tx=>{
         const actor=await tx.user.findFirst({where:{id:req.user.id,deletedAt:null}});
         if(!actor)throw new AppError('La cuenta ya no está activa',401);
+        const scope=actor.studioId?'studio:'+actor.studioId:'user:'+actor.id;
+        if(requestId){
+            const prior=await tx.caseImportRequest.findUnique({where:{userId_requestId:{userId:actor.id,requestId}}});
+            if(prior){
+                if(prior.scope!==scope||prior.payloadHash!==payloadHash)throw new AppError('Esta solicitud corresponde a otro lote o estudio',409);
+                return {count:prior.count,replayed:true};
+            }
+        }
         const results=[];
         for(const c of cases){
             const caseNumber = `CAS-${Date.now()}-${randomUUID()}`;
@@ -279,15 +291,19 @@ export const importCases = async (req, res) => {
         }
         await recordCaseActivity(tx,actor.id,results[0].id,'Importación de expedientes completada',
             `${results.length} expedientes incorporados. Consultalos en Gestión de Expedientes.`,[],'IMPORT');
-        return results;
+        if(requestId)await tx.caseImportRequest.create({data:{userId:actor.id,requestId,scope,payloadHash,count:results.length}});
+        return {count:results.length,replayed:false};
         },{timeout:30000});
 
-        res.status(201).json({ 
-            message: `${importedCases.length} casos importados exitosamente`,
-            count: importedCases.length
+        res.status(importedCases.replayed?200:201).json({
+            message: `${importedCases.count} casos importados exitosamente`,
+            count: importedCases.count,
+            ...(requestId?{requestId,replayed:importedCases.replayed}:{})
         });
     } catch (error) {
         console.error('Error importing cases:', error);
+        if(['P2002','P2034','P2028','P1008'].includes(error.code))return res.status(409).json({message:'La importación cambió o sigue en curso. Reintentá con los mismos datos.'});
+        if(['P2021','P2022'].includes(error.code))return res.status(503).json({message:'Falta aplicar la actualización de importaciones'});
         res.status(error.statusCode||500).json({ message: error.isOperational?error.message:'Error interno al importar casos' });
     }
 };

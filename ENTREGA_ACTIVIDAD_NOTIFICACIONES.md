@@ -71,3 +71,5 @@ La importación conserva su semántica de creación: repetir una petición confi
 Prueba específica del servidor aprobada (60 no seleccionadas): lote de dos expedientes, aviso por destinatario, ausencia de datos privados, estudio forjado ignorado, reversión ante fila inválida, rechazo de lote vacío y aislamiento del titular independiente. No se repitió la suite completa ni se realizó una importación manual en el navegador para esta ampliación.
 
 Para el resumen de importación también pasaron las 6 pruebas del panel, ESLint completo y la compilación de producción en server/scratch/activity-import-client-build. Se conserva client/dist; persiste la advertencia conocida del módulo Excel.
+
+Actualización final del 31/10/2026: se agregó protección de reintentos con requestId, documentada en ENTREGA_REINTENTOS_IMPORTACION.md. La suite completa de fuentes actuales aprobó 359 pruebas de servidor y 112 de interfaz. La configuración del servidor ahora excluye las copias archivadas de scratch; los totales dirigidos anteriores no sustituyen esta validación final.

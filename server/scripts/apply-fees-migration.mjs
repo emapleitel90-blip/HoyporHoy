@@ -11,7 +11,7 @@ dotenv.config();
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const schema = path.join(root, 'prisma/schema.prisma');
 const wanted = process.argv[2] || '20261028000000_fees';
-if (!['20261028000000_fees', '20261028010000_fee_payment_reversals', '20261028020000_fee_agreement_amendments', '20261028030000_fee_payment_receipts', '20261028040000_writings', '20261028050000_task_writing_versions', '20261028060000_writing_templates'].includes(wanted)) throw new Error('Unsupported migration');
+if (!['20261028000000_fees', '20261028010000_fee_payment_reversals', '20261028020000_fee_agreement_amendments', '20261028030000_fee_payment_receipts', '20261028040000_writings', '20261028050000_task_writing_versions', '20261028060000_writing_templates', '20261031000000_case_import_requests'].includes(wanted)) throw new Error('Unsupported migration');
 if (!process.env.DATABASE_URL?.startsWith('file:')) throw new Error('This helper only supports local SQLite');
 const db = new PrismaClient();
 const history = await db.$queryRawUnsafe('SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL');
