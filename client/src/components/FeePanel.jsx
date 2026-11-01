@@ -13,9 +13,9 @@ const moment = value => new Date(value).toLocaleString('es-AR', { timeZone: 'Ame
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Cordoba' }).format(new Date());
 const blankQuota = () => ({ amount: '', dueDate: '' });
 
-export const FeePanel = ({ caseId, inbox = false, onReceiptSaved }) => <Fees key={inbox ? 'inbox' : caseId} caseId={caseId} inbox={inbox} onReceiptSaved={onReceiptSaved} />;
+export const FeePanel = ({ caseId, inbox = false, onReceiptSaved, onChanged }) => <Fees key={inbox ? 'inbox' : caseId} caseId={caseId} inbox={inbox} onReceiptSaved={onReceiptSaved} onChanged={onChanged} />;
 
-function Fees({ caseId, inbox, onReceiptSaved }) {
+function Fees({ caseId, inbox, onReceiptSaved, onChanged }) {
     const { user } = useAuth();
     const canWrite = ['LAWYER', 'ADMIN', 'SUPER_ADMIN'].includes(user?.role);
     const [data, setData] = useState(null);
@@ -67,7 +67,7 @@ function Fees({ caseId, inbox, onReceiptSaved }) {
         try {
             const response = await axios.post(api.fees.byCase(caseId), { description, installments: quotas }, auth());
             if (!Array.isArray(response.data?.installments)) throw new Error('Respuesta inválida');
-            setData(response.data); setNotice('Acuerdo guardado.');
+            setData(response.data); onChanged?.(); setNotice('Acuerdo guardado.');
         } catch (err) { setSaveError(err.response?.data?.message || 'No se pudo guardar el acuerdo. Los datos se conservan.'); }
         finally { changeBusy(false); }
     };
@@ -79,7 +79,7 @@ function Fees({ caseId, inbox, onReceiptSaved }) {
             requestId.current ||= crypto.randomUUID();
             const response = await axios.post(api.fees.payment(selected), { ...payment, requestId: requestId.current }, auth());
             if (!Array.isArray(response.data?.installments)) throw new Error('Respuesta inválida');
-            setData(response.data); setSelected(null); requestId.current = null;
+            setData(response.data); onChanged?.(); setSelected(null); requestId.current = null;
             setNotice('Pago registrado. Saldo actualizado.');
         } catch (err) { setSaveError(err.response?.data?.message || 'No se pudo confirmar el pago. Reintentá con los mismos datos para evitar duplicados.'); }
         finally { changeBusy(false); }
@@ -102,7 +102,7 @@ function Fees({ caseId, inbox, onReceiptSaved }) {
                 .find(entry => entry.id === reversing.id);
             if (!Array.isArray(response.data?.installments) || reversedPayment?.reversal?.requestId !== reversalRequestId.current ||
                 reversedPayment.reversal.reason !== trimmedReason) throw new Error('Respuesta inválida');
-            setData(response.data); setReversing(null); setReason(''); reversalRequestId.current = null;
+            setData(response.data); onChanged?.(); setReversing(null); setReason(''); reversalRequestId.current = null;
             setNotice('Pago anulado. Saldo y recordatorios actualizados.');
         } catch (err) { setSaveError(err.response?.data?.message || 'No se pudo confirmar la anulación. Conservamos el motivo; reintentá con los mismos datos.'); }
         finally { changeBusy(false); }
@@ -195,7 +195,7 @@ function Fees({ caseId, inbox, onReceiptSaved }) {
             onClose={() => setReceiptEditing(null)} onRefresh={() => { setReceiptEditing(null); setReload(value => value + 1); }}
             onSaved={(agreement, file) => { setData(agreement); setReceiptEditing(null); setNotice('Comprobante guardado.'); onReceiptSaved?.(file); }} />}
         {editingAgreement && <FeeAgreementEditor agreement={editingAgreement} busy={busy} onBusyChange={changeBusy}
-            onSaved={result => { setData(result); setEditingAgreement(null); setNotice('Acuerdo modificado. Saldo y recordatorios actualizados.'); }}
+            onSaved={result => { setData(result); onChanged?.(); setEditingAgreement(null); setNotice('Acuerdo modificado. Saldo y recordatorios actualizados.'); }}
             onCancel={() => setEditingAgreement(null)} onDiscardAndReload={() => { setEditingAgreement(null); setReload(value => value + 1); }} />}
         {saveError && <p role="alert" className="text-red-700">{saveError}</p>}
         {notice && <p role="status" className="text-green-700">{notice}</p>}

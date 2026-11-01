@@ -105,6 +105,7 @@ const ViewCase = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [retry, setRetry] = useState(0);
+    const [summaryVersion, setSummaryVersion] = useState(0);
 
     useEffect(() => {
         let cancelled = false;
@@ -235,7 +236,7 @@ const ViewCase = () => {
             </div>
 
             {/* Score Banner */}
-            <CaseProgressSummary caseId={caseItem.id} files={caseItem.files||[]}/>
+            <CaseProgressSummary caseId={caseItem.id} files={caseItem.files||[]} refreshVersion={summaryVersion}/>
             {caseItem.score > 0 && <ScorePanel score={caseItem.score} />}
 
             {/* 1. Datos del Consultante */}
@@ -428,7 +429,7 @@ const ViewCase = () => {
                 </div>
             </div>
             
-            <FollowUpPanel caseItem={caseItem} />
+            <FollowUpPanel caseItem={caseItem} onChanged={() => setSummaryVersion(value => value + 1)} />
             <CaseFilePanel 
                 caseId={caseItem.id} 
                 studioId={caseItem.studioId} 
@@ -436,7 +437,7 @@ const ViewCase = () => {
                 onFilesChange={files => setCaseItem(current => ({ ...current, files }))}
             />
 
-            <FeePanel caseId={caseItem.id} onReceiptSaved={file => setCaseItem(current => current?.id === file.caseId
+            <FeePanel caseId={caseItem.id} onChanged={() => setSummaryVersion(value => value + 1)} onReceiptSaved={file => setCaseItem(current => current?.id === file.caseId
                 ? { ...current, files: [...(current.files || []).filter(item => item.id !== file.id), file] } : current)} />
             <WrittenDocumentsPanel caseId={caseItem.id} />
             <JurisprudencePanel caseId={caseItem.id} caseFuero={caseItem.fuero || details.fuero} />

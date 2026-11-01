@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
 
-export const CaseProgressSummary = ({caseId,files=[]}) => <Progress key={caseId} caseId={caseId} files={files}/>;
-function Progress({caseId,files}) {
+export const CaseProgressSummary = ({caseId,files=[],refreshVersion=0}) => <Progress key={caseId} caseId={caseId} files={files} refreshVersion={refreshVersion}/>;
+function Progress({caseId,files,refreshVersion}) {
     const [reload,setReload]=useState(0);
     const [docs,setDocs]=useState({status:'loading'});
     const [fees,setFees]=useState({status:'loading'});
@@ -27,7 +27,7 @@ function Progress({caseId,files}) {
         const refresh=()=>setReload(value=>value+1);
         const timer=setInterval(refresh,30000);window.addEventListener('focus',refresh);
         return()=>{cancelled=true;controller.abort();clearInterval(timer);window.removeEventListener('focus',refresh);};
-    },[caseId,reload]);
+    },[caseId,reload,refreshVersion]);
     const documents=docs.data?.filter(item=>item.kind==='DOCUMENT')||[];
     const pending=documents.filter(item=>item.status!=='VERIFIED');
     const received=documents.filter(item=>item.status==='RECEIVED').length;

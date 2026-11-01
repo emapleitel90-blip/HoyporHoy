@@ -14,7 +14,7 @@ const LABELS = { PENDING: 'Pendiente', RECEIVED: 'Recibido, falta verificar', RE
 const fresh = () => ({ kind: 'DOCUMENT', title: '', notes: '', dueDate: '', ownerId: '' });
 const auth = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('lyp_token')}` } });
 
-export const FollowUpPanel = ({ caseItem, inbox = false }) => {
+export const FollowUpPanel = ({ caseItem, inbox = false, onChanged }) => {
     const { user } = useAuth();
     const { showToast } = useToast();
     const [items, setItems] = useState([]);
@@ -66,6 +66,7 @@ export const FollowUpPanel = ({ caseItem, inbox = false }) => {
                 ...(editing ? { version: editing.updatedAt } : {}) };
             if (editing) await axios.patch(api.followUps.update(editing.id), body, auth());
             else await axios.post(api.followUps.byCase(caseId), body, auth());
+            onChanged?.();
             setForm(fresh()); setEditing(null); setShowForm(false); await load();
         } catch (err) { setError(await errorMessage(err, 'No se pudo guardar el seguimiento.')); }
         finally { setBusy(false); }
@@ -75,6 +76,7 @@ export const FollowUpPanel = ({ caseItem, inbox = false }) => {
         try {
             await axios.post(api.followUps.action(item.id), { action, version: item.updatedAt,
                 notes: notes[item.id] || '', fileId: selectedFiles[item.id] || undefined }, auth());
+            onChanged?.();
             setNotes(current => ({ ...current, [item.id]: '' }));
             await load();
         } catch (err) { setError(await errorMessage(err, 'No se pudo actualizar el seguimiento.')); }

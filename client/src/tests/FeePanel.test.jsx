@@ -30,16 +30,19 @@ describe('Honorarios por expediente', () => {
     it('guarda el plan con sesión y conserva el formulario si falla', async () => {
         axios.get.mockResolvedValue({ data: null });
         axios.post.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ data: agreement });
-        render(<FeePanel caseId="case-a" />);
+        const onChanged = vi.fn();
+        render(<FeePanel caseId="case-a" onChanged={onChanged} />);
         await screen.findByRole('button', { name: 'Guardar acuerdo' });
         fireEvent.change(screen.getByLabelText('Descripción del acuerdo'), { target: { value: 'Acuerdo ficticio' } });
         fireEvent.change(screen.getByLabelText('Importe de cuota 1'), { target: { value: '100.00' } });
         fireEvent.change(screen.getByLabelText('Vencimiento de cuota 1'), { target: { value: '2026-10-28' } });
         fireEvent.click(screen.getByRole('button', { name: 'Guardar acuerdo' }));
         await screen.findByRole('alert');
+        expect(onChanged).not.toHaveBeenCalled();
         expect(screen.getByLabelText('Descripción del acuerdo').value).toBe('Acuerdo ficticio');
         fireEvent.click(screen.getByRole('button', { name: 'Guardar acuerdo' }));
         await screen.findByText('Acuerdo guardado.');
+        expect(onChanged).toHaveBeenCalledTimes(1);
         expect(axios.post).toHaveBeenLastCalledWith(api.fees.byCase('case-a'), { description: 'Acuerdo ficticio', installments: [{ amount: '100.00', dueDate: '2026-10-28' }] }, { headers: { Authorization: 'Bearer token' } });
     });
 

@@ -37,3 +37,16 @@ it('descarta respuestas tardías de otro expediente',async()=>{
     expect(screen.queryByText('1 documento recibido para revisar')).toBeNull();
     expect(screen.getByText('Sin requisitos documentales registrados')).toBeTruthy();
 });
+it('vuelve a consultar al confirmar un cambio y descarta la consulta anterior',async()=>{
+    let finish;
+    axios.get.mockReturnValueOnce(new Promise(resolve=>{finish=resolve;}))
+        .mockResolvedValueOnce({data:{caseId:'case',balanceCents:900}})
+        .mockResolvedValueOnce({data:[]}).mockResolvedValueOnce({data:{caseId:'case',balanceCents:0}});
+    const {rerender}=render(<CaseProgressSummary caseId="case" refreshVersion={0}/>);
+    rerender(<CaseProgressSummary caseId="case" refreshVersion={1}/>);
+    await screen.findByText(/Saldo por cobrar:.*0,00/);
+    expect(axios.get.mock.calls[0][1].signal.aborted).toBe(true);
+    await act(async()=>finish({data:[{caseId:'case',kind:'DOCUMENT',status:'RECEIVED'}]}));
+    expect(screen.queryByText('1 documento recibido para revisar')).toBeNull();
+    expect(axios.get).toHaveBeenCalledTimes(4);
+});
