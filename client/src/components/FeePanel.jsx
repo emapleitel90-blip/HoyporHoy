@@ -120,7 +120,7 @@ function Fees({ caseId, inbox, onReceiptSaved }) {
         : currentReceiptPayment?.reversal ? 'El pago está anulado. Sus comprobantes se conservan para consulta.'
             : receiptEditing && !currentReceiptPayment ? 'El pago ya no está disponible. Actualizá los honorarios.' : '';
 
-    return <section className="bg-white border rounded-xl p-6 my-6 space-y-4">
+    return <section id={inbox?undefined:'case-fees'} className="bg-white border rounded-xl p-6 my-6 space-y-4 scroll-mt-24">
         <div className="flex flex-wrap gap-3 justify-between"><h2 className="font-semibold">{inbox ? 'Honorarios por cobrar · próximos 7 días y atrasados' : 'Honorarios y cobranzas'}</h2>
             <button disabled={busy} onClick={() => setReload(value => value + 1)} className="underline">Actualizar honorarios</button></div>
         <p className="text-sm text-gray-600">Importes en pesos argentinos. Los honorarios del cliente se registran separados de los gastos del expediente.</p>

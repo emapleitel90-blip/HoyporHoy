@@ -12,6 +12,7 @@ vi.mock('../components/ExpensePanel', () => ({ ExpensePanel: () => null }));
 vi.mock('../components/CaseFilePanel', () => ({ CaseFilePanel: () => null }));
 vi.mock('../components/JurisprudencePanel', () => ({ JurisprudencePanel: () => null }));
 vi.mock('../components/TaskPanel', () => ({ TaskPanel: () => null }));
+vi.mock('../components/CaseProgressSummary', () => ({ CaseProgressSummary: () => null }));
 vi.mock('../components/FollowUpPanel', () => ({ FollowUpPanel: () => null }));
 vi.mock('../components/FeePanel', () => ({ FeePanel: () => null }));
 vi.mock('../components/WrittenDocumentsPanel', () => ({ WrittenDocumentsPanel: ({ caseId }) => <p>Escritos del expediente {caseId}</p> }));

@@ -91,7 +91,7 @@ export const FollowUpPanel = ({ caseItem, inbox = false }) => {
     const button = 'px-3 py-2 text-sm font-semibold rounded-lg bg-indigo-50 text-indigo-700 disabled:opacity-40';
     const input = 'w-full rounded-lg border border-slate-200 bg-white p-2 text-sm';
     const files = (caseItem?.files || []).filter(isPrivateFile);
-    return <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
+    return <section id={inbox?undefined:'case-follow-ups'} className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 scroll-mt-24">
         <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-bold text-slate-900">{inbox ? 'Seguimiento de clientes' : 'Documentación y compromisos del cliente'}</h2>
             <div className="flex gap-2">

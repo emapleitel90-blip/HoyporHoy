@@ -11,6 +11,7 @@ import { TaskPanel } from '../components/TaskPanel';
 import { FollowUpPanel } from '../components/FollowUpPanel';
 import { FeePanel } from '../components/FeePanel';
 import { WrittenDocumentsPanel } from '../components/WrittenDocumentsPanel';
+import { CaseProgressSummary } from '../components/CaseProgressSummary';
 
 const STATUS_LABELS = {
     OPEN: 'Abierto', CLOSED: 'Cerrado', IN_REVIEW: 'En Revisión',
@@ -234,6 +235,7 @@ const ViewCase = () => {
             </div>
 
             {/* Score Banner */}
+            <CaseProgressSummary caseId={caseItem.id} files={caseItem.files||[]}/>
             {caseItem.score > 0 && <ScorePanel score={caseItem.score} />}
 
             {/* 1. Datos del Consultante */}
