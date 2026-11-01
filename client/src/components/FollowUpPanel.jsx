@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { api } from '../config/api';
+import { notifyActivityChanged } from '../utils/activityEvents';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { isPrivateFile, downloadCaseFile, errorMessage } from '../utils/caseFiles';
@@ -66,7 +67,7 @@ export const FollowUpPanel = ({ caseItem, inbox = false, onChanged }) => {
                 ...(editing ? { version: editing.updatedAt } : {}) };
             if (editing) await axios.patch(api.followUps.update(editing.id), body, auth());
             else await axios.post(api.followUps.byCase(caseId), body, auth());
-            onChanged?.();
+            notifyActivityChanged(); onChanged?.();
             setForm(fresh()); setEditing(null); setShowForm(false); await load();
         } catch (err) { setError(await errorMessage(err, 'No se pudo guardar el seguimiento.')); }
         finally { setBusy(false); }
@@ -76,7 +77,7 @@ export const FollowUpPanel = ({ caseItem, inbox = false, onChanged }) => {
         try {
             await axios.post(api.followUps.action(item.id), { action, version: item.updatedAt,
                 notes: notes[item.id] || '', fileId: selectedFiles[item.id] || undefined }, auth());
-            onChanged?.();
+            notifyActivityChanged(); onChanged?.();
             setNotes(current => ({ ...current, [item.id]: '' }));
             await load();
         } catch (err) { setError(await errorMessage(err, 'No se pudo actualizar el seguimiento.')); }

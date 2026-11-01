@@ -66,10 +66,18 @@ Importar expedientes desde Excel/CSV registra un aviso por destinatario con auto
 
 La importación vuelve a comprobar la cuenta activa dentro de una transacción y deriva el estudio de esa cuenta, ignorando estudios enviados en las filas. El lote y sus avisos se confirman juntos; cualquier fallo revierte ambos. Se rechazan arreglos vacíos y filas que no sean objetos. Los nuevos números de expediente usan UUID para evitar colisiones entre filas. La transacción admite hasta 30 segundos de ejecución; no se modificó el límite general del servidor.
 
-La importación conserva su semántica de creación: repetir una petición confirmada crea otro lote; no se agregó idempotencia a la importación. No reconstruye avisos de importaciones anteriores y no requiere migración.
+La ampliación inicial conservaba la semántica de creación. Desde el 31/10/2026, los reintentos con requestId se deduplican mediante la migración documentada en ENTREGA_REINTENTOS_IMPORTACION.md. Clientes sin requestId siguen sin esa protección. No se reconstruyen avisos de importaciones anteriores.
 
 Prueba específica del servidor aprobada (60 no seleccionadas): lote de dos expedientes, aviso por destinatario, ausencia de datos privados, estudio forjado ignorado, reversión ante fila inválida, rechazo de lote vacío y aislamiento del titular independiente. No se repitió la suite completa ni se realizó una importación manual en el navegador para esta ampliación.
 
 Para el resumen de importación también pasaron las 6 pruebas del panel, ESLint completo y la compilación de producción en server/scratch/activity-import-client-build. Se conserva client/dist; persiste la advertencia conocida del módulo Excel.
 
 Actualización final del 31/10/2026: se agregó protección de reintentos con requestId, documentada en ENTREGA_REINTENTOS_IMPORTACION.md. La suite completa de fuentes actuales aprobó 359 pruebas de servidor y 112 de interfaz. La configuración del servidor ahora excluye las copias archivadas de scratch; los totales dirigidos anteriores no sustituyen esta validación final.
+
+## Campana después de guardar — 01/11/2026
+
+Los paneles de archivos, seguimiento y honorarios emiten notifications-updated solo después de una operación confirmada por el servidor, incluidos comprobantes de pagos. El evento no crea notificaciones ni modifica su lectura: solicita que la campana vuelva a consultar el recuento autorizado. Otros circuitos y otras ventanas conservan la actualización periódica y al recuperar el foco.
+
+Si el aviso llega durante una consulta, la campana conserva una actualización pendiente y agrupa las señales simultáneas en una sola consulta posterior. Al cambiar de usuario o desmontar, descarta las respuestas antiguas y limpia los listeners. El contador rechaza valores negativos o que no sean enteros seguros.
+
+Validación específica: 29 pruebas aprobadas en seis archivos de interfaz, incluidos carga fallida/confirmada, aviso durante consulta, cambio de usuario, limpieza, seguimiento, honorarios, comprobantes y listado de actividad. ESLint y compilación de producción aprobados; continúa la advertencia conocida del módulo Excel. Esta etapa no incluye una nueva prueba manual con cambios en la base de demostración ni cambios del servidor.

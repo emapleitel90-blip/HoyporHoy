@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { File, Upload, Trash2, Download, ExternalLink, Paperclip } from 'lucide-react';
 import axios from 'axios';
 import { api } from '../config/api';
+import { notifyActivityChanged } from '../utils/activityEvents';
 import { useToast } from '../context/ToastContext';
 import { isPrivateFile, errorMessage, downloadCaseFile } from '../utils/caseFiles';
 
@@ -47,6 +48,7 @@ export const CaseFilePanel = ({ caseId, initialFiles = EMPTY_FILES, onFilesChang
                 headers: { Authorization: `Bearer ${token}` }
             });
             
+            notifyActivityChanged();
             if (activeCase.current !== caseId) return;
             updateFiles([...latestFiles.current, data]);
             showToast('Archivo guardado correctamente', 'success');
@@ -76,6 +78,7 @@ export const CaseFilePanel = ({ caseId, initialFiles = EMPTY_FILES, onFilesChang
             const { data } = await axios.delete(api.cases.deleteFile(fileId), {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            notifyActivityChanged();
             if (activeCase.current !== caseId) return;
             updateFiles(latestFiles.current.filter(file => file.id !== fileId));
             showToast(data.message || 'Archivo eliminado', data.cleanupPending ? 'warning' : 'success');

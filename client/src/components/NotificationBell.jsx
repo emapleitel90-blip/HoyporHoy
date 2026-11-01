@@ -9,20 +9,25 @@ export const NotificationBell = () => {
     const [unreadCount, setUnreadCount] = useState(0);
     const {user}=useAuth();
     useEffect(() => {
-        let cancelled=false, pending=false;
+        let cancelled=false, pending=false, refreshQueued=false;
         setUnreadCount(0);
         const fetchNotifications = async () => {
-        if(pending)return;pending=true;
+        if(cancelled)return;
+        if(pending){refreshQueued=true;return;}pending=true;
         try {
             const token = localStorage.getItem('lyp_token');
             if (!token) return;
             const { data } = await axios.get(api.notifications.list, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            if(!Number.isSafeInteger(data.unread)||data.unread<0)throw new Error('Respuesta inválida');
             if(!cancelled)setUnreadCount(data.unread);
         } catch (error) {
             console.error('Error fetching notifications count:', error);
-        } finally {pending=false;}
+        } finally {
+            pending=false;
+            if(refreshQueued&&!cancelled){refreshQueued=false;fetchNotifications();}
+        }
     };
         fetchNotifications();
         const intervalId = setInterval(fetchNotifications, 30000);

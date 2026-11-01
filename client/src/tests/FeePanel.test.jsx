@@ -24,13 +24,14 @@ beforeEach(() => {
     vi.stubGlobal('navigator', { clipboard: { writeText: copy } });
     axios.get.mockResolvedValue({ data: agreement });
 });
-afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); vi.unstubAllGlobals(); });
 
 describe('Honorarios por expediente', () => {
     it('guarda el plan con sesión y conserva el formulario si falla', async () => {
         axios.get.mockResolvedValue({ data: null });
         axios.post.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ data: agreement });
         const onChanged = vi.fn();
+        const dispatch = vi.spyOn(window, 'dispatchEvent');
         render(<FeePanel caseId="case-a" onChanged={onChanged} />);
         await screen.findByRole('button', { name: 'Guardar acuerdo' });
         fireEvent.change(screen.getByLabelText('Descripción del acuerdo'), { target: { value: 'Acuerdo ficticio' } });
@@ -39,10 +40,12 @@ describe('Honorarios por expediente', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Guardar acuerdo' }));
         await screen.findByRole('alert');
         expect(onChanged).not.toHaveBeenCalled();
+        expect(dispatch).not.toHaveBeenCalled();
         expect(screen.getByLabelText('Descripción del acuerdo').value).toBe('Acuerdo ficticio');
         fireEvent.click(screen.getByRole('button', { name: 'Guardar acuerdo' }));
         await screen.findByText('Acuerdo guardado.');
         expect(onChanged).toHaveBeenCalledTimes(1);
+        expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: 'notifications-updated' }));
         expect(axios.post).toHaveBeenLastCalledWith(api.fees.byCase('case-a'), { description: 'Acuerdo ficticio', installments: [{ amount: '100.00', dueDate: '2026-10-28' }] }, { headers: { Authorization: 'Bearer token' } });
     });
 
