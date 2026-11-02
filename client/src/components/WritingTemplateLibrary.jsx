@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
+import { notifyActivityChanged } from '../utils/activityEvents';
 const blank = {title:'',content:'',jurisdiction:'',fuero:'',kind:''};
 const auth = () => ({headers:{Authorization:'Bearer '+localStorage.getItem('lyp_token')}});
 const fieldValue = (values, key) => Object.hasOwn(values, key) ? values[key] : '';
@@ -43,6 +44,7 @@ function TemplateLibrary({caseId,canManage,disabled,onUse,sourceVersion}) {
             const payload={...draft,title:draft.title.trim(),jurisdiction:draft.jurisdiction.trim(),fuero:draft.fuero.trim(),kind:draft.kind.trim(),content:draft.content.replace(/\r\n?/g,'\n'),requestId:requestId.current};
             const {data}=await axios.post(api.writings.templates(caseId),payload,auth());
             if(!data?.id||Object.keys(payload).some(key=>data[key]!==payload[key]))throw new Error();
+            notifyActivityChanged();
             setItems(current=>[data,...current.filter(item=>item.id!==data.id)]);setDraft(blank);setConfirmDiscard(false);requestId.current=null;
         }catch(err){setError(err.response?.data?.message||'No se pudo confirmar el modelo. Conservamos los datos para reintentar.');}
         finally{setBusy(false);}

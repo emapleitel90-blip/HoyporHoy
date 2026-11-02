@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../config/api';
+import { notifyActivityChanged } from '../utils/activityEvents';
 
 import { Field, Select, Textarea, SectionInfo, SCORING_ITEMS, SCORE_VALUES, getScoreLabel } from '../components/CreateCaseForms';
 
@@ -410,6 +411,7 @@ const CreateCase = () => {
 
                 showToast('Caso creado con éxito', 'success');
             }
+            notifyActivityChanged();
             navigate('/cases');
         } catch (err) {
             setError(err.message || 'Error al guardar el caso');

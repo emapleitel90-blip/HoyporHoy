@@ -3,6 +3,7 @@ import { readImportRows } from '../utils/importRows';
 import { UploadCloud, X, FileSpreadsheet, Loader2, CheckCircle2 } from 'lucide-react';
 import axios from 'axios';
 import { api } from '../config/api';
+import { notifyActivityChanged } from '../utils/activityEvents';
 import { useToast } from '../context/ToastContext';
 
 export const DataImportModal = ({ isOpen, onClose, onImportSuccess }) => {
@@ -95,6 +96,7 @@ export const DataImportModal = ({ isOpen, onClose, onImportSuccess }) => {
             });
             if(res.data?.requestId!==requestId.current||res.data?.count!==mappedCases.length)throw new Error('No se pudo confirmar la importación. Conservamos la vista previa para reintentar.');
 
+            notifyActivityChanged();
             showToast(res.data.message, 'success');
             onImportSuccess();
             closeModal();

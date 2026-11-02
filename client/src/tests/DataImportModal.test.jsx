@@ -4,6 +4,8 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import axios from 'axios';
+import { notifyActivityChanged } from '../utils/activityEvents';
+vi.mock('../utils/activityEvents', () => ({ notifyActivityChanged: vi.fn() }));
 import { DataImportModal } from '../components/DataImportModal';
 import { api } from '../config/api';
 
@@ -54,10 +56,12 @@ describe('Importación con lectores reales de CSV y Excel', () => {
         fireEvent.click(screen.getByRole('button',{name:'Confirmar e Importar'}));
         await waitFor(()=>expect(showToast).toHaveBeenCalledWith(expect.stringContaining('No se pudo confirmar'),'error'));
         expect(callbacks.onImportSuccess).not.toHaveBeenCalled();expect(callbacks.onClose).not.toHaveBeenCalled();
+        expect(notifyActivityChanged).not.toHaveBeenCalled();
         const id=axios.post.mock.calls[0][1].requestId;
         fireEvent.click(screen.getByRole('button',{name:'Confirmar e Importar'}));
         await waitFor(()=>expect(callbacks.onImportSuccess).toHaveBeenCalledTimes(1));
         expect(axios.post.mock.calls[1][1].requestId).toBe(id);
+        expect(notifyActivityChanged).toHaveBeenCalledTimes(1);
     });
     it.each(['csv', 'xlsx', 'xls'])('previsualiza e importa %s conservando tildes, columnas y sesión', async extension => {
         const callbacks = open();

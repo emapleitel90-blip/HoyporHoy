@@ -2,6 +2,8 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import axios from 'axios';
+import { notifyActivityChanged } from '../utils/activityEvents';
+vi.mock('../utils/activityEvents', () => ({ notifyActivityChanged: vi.fn() }));
 import { JurisprudencePanel } from '../components/JurisprudencePanel';
 import { api } from '../config/api';
 
@@ -49,6 +51,7 @@ describe('Jurisprudencia sin IA', () => {
         fill();
         fireEvent.click(screen.getByRole('button', { name: 'Guardar referencia' }));
         await screen.findByText('Referencia guardada en el expediente.');
+        expect(notifyActivityChanged).toHaveBeenCalledTimes(1);
         expect(axios.post).toHaveBeenCalledWith(api.jurisprudence.save, {
             caseId: 'case-a', insightData: { titulo: reference.titulo, tribunal: reference.tribunal,
                 fecha: reference.fecha, url: reference.url, extracto: reference.extracto },
@@ -63,9 +66,11 @@ describe('Jurisprudencia sin IA', () => {
         fill();
         fireEvent.click(screen.getByRole('button', { name: 'Guardar referencia' }));
         await screen.findByRole('alert');
+        expect(notifyActivityChanged).not.toHaveBeenCalled();
         expect(screen.getByLabelText('Título del fallo').value).toBe(reference.titulo);
         fireEvent.click(screen.getByRole('button', { name: 'Guardar referencia' }));
         await screen.findByText('Referencia guardada en el expediente.');
+        expect(notifyActivityChanged).toHaveBeenCalledTimes(1);
     });
 
     it('muestra errores de carga y recupera registros históricos sin enlaces activos', async () => {

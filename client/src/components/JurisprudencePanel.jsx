@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
+import { notifyActivityChanged } from '../utils/activityEvents';
 
 const portals = [
     ['SAIJ', 'https://www.saij.gob.ar/buscador/'],
@@ -53,6 +54,7 @@ function CaseReferences({ caseId }) {
             const { data } = await axios.post(api.jurisprudence.save,
                 { caseId, insightData: form }, { headers: headers() });
             if (!data?.id || data.verification !== 'USER_PROVIDED') throw new Error('Respuesta inválida');
+            notifyActivityChanged();
             setReferences(previous => [data, ...previous]);
             setForm(empty);
             setNotice('Referencia guardada en el expediente.');
