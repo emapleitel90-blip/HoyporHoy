@@ -32,7 +32,7 @@ const Notifications = () => {
             const { data } = await axios.get(api.notifications.list, {
                 headers: { Authorization: `Bearer ${token}` },...(cursor?{params:{cursor}}:{})
             });
-            if(!Array.isArray(data.notifications)||!Number.isSafeInteger(data.unread))throw new Error('Respuesta inválida');
+            if(!Array.isArray(data.notifications)||!Number.isSafeInteger(data.unread)||data.unread<0)throw new Error('Respuesta inválida');
             if(data.nextCursor!=null&&typeof data.nextCursor!=='string')throw new Error('Respuesta inválida');
             if(current===generation.current){setNotifications(data.notifications);setUnreadCount(data.unread);setNextCursor(data.nextCursor||null);setError('');}
         } catch (error) {
@@ -45,7 +45,8 @@ const Notifications = () => {
     useEffect(() => {
         fetchNotifications();
         const timer=cursor?null:setInterval(fetchNotifications,30000);
-        return()=>{invalidate();clearInterval(timer);};
+        if(!cursor)window.addEventListener('focus',fetchNotifications);
+        return()=>{invalidate();clearInterval(timer);window.removeEventListener('focus',fetchNotifications);};
     }, [fetchNotifications,invalidate,cursor]);
     const goToPage=(value,number)=>{
         invalidate();setNotifications([]);setNextCursor(null);setError('');setLoading(true);setCursor(value);setPage(number);
@@ -106,7 +107,7 @@ const Notifications = () => {
                     </button>
                 )}
             </div>
-            <p className="text-sm text-gray-600">Hasta 50 avisos por página de los expedientes a los que tenés acceso. Incluye cambios del expediente, archivos, vencimientos, gastos, tareas, revisiones, seguimientos, escritos, modelos, referencias jurídicas y honorarios. Los avisos recientes se actualizan cada 30 segundos.</p>
+            <p className="text-sm text-gray-600">Hasta 50 avisos por página de los expedientes a los que tenés acceso. Incluye cambios del expediente, archivos, vencimientos, gastos, tareas, revisiones, seguimientos, escritos, modelos, referencias jurídicas y honorarios. Los avisos recientes se actualizan cada 30 segundos y al volver a esta ventana.</p>
             <button disabled={busy} onClick={refresh} className="underline">Actualizar actividad</button>
             <div className="flex flex-wrap items-center gap-4" aria-label="Páginas de actividad">
                 <span>Página {page}</span>

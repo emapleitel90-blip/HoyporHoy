@@ -60,6 +60,8 @@ it('consulta páginas antiguas con cursor y permite volver a los avisos reciente
     fireEvent.click(screen.getByRole('button',{name:'Ver avisos más antiguos'}));
     await screen.findByText(older.message);
     expect(screen.getByText('Página 2')).toBeTruthy();
+    fireEvent(window,new Event('focus'));
+    expect(axios.get).toHaveBeenCalledTimes(2);
     expect(axios.get.mock.calls[1][1].params).toEqual({cursor:'cursor-one'});
     expect(screen.queryByText(notice.message)).toBeNull();
     expect(screen.queryByRole('button',{name:'Marcar todas como leídas'})).toBeNull();
@@ -87,4 +89,31 @@ it('ofrece abrir la lista de expedientes desde un aviso de importación',async()
     render(<MemoryRouter><Notifications/></MemoryRouter>);
     expect((await screen.findByRole('link',{name:'Ver expedientes'})).getAttribute('href')).toBe('/cases');
     expect(screen.queryByRole('link',{name:'Ir al Expediente: DEMO'})).toBeNull();
+});
+it('actualiza recientes al volver a la ventana sin perder filtros y limpia la escucha',async()=>{
+    const newer={...notice,id:'new',title:'Otra entrega',message:'Revisora · Entrega nueva'};
+    axios.get.mockResolvedValueOnce({data:{notifications:[notice],unread:1}})
+        .mockResolvedValueOnce({data:{notifications:[notice,newer],unread:2}});
+    const {unmount}=render(<MemoryRouter><Notifications/></MemoryRouter>);
+    await screen.findByText(notice.message);
+    fireEvent.change(screen.getByLabelText('Buscar actividad'),{target:{value:'nueva'}});
+    fireEvent.click(screen.getByLabelText('Solo sin leer'));
+    fireEvent(window,new Event('focus'));
+    await screen.findByText(newer.message);
+    expect(screen.getByLabelText('Buscar actividad').value).toBe('nueva');
+    expect(screen.getByLabelText('Solo sin leer').checked).toBe(true);
+    expect(screen.queryByText(notice.message)).toBeNull();
+    expect(axios.put).not.toHaveBeenCalled();
+    unmount();fireEvent(window,new Event('focus'));
+    expect(axios.get).toHaveBeenCalledTimes(2);
+});
+it('rechaza un recuento negativo y permite recuperar la consulta',async()=>{
+    axios.get.mockResolvedValueOnce({data:{notifications:[],unread:-1}})
+        .mockResolvedValueOnce({data:{notifications:[notice],unread:1}});
+    render(<MemoryRouter><Notifications/></MemoryRouter>);
+    await screen.findByRole('alert');
+    expect(screen.queryByText('Tenés -1 notificaciones sin leer')).toBeNull();
+    fireEvent.click(screen.getByRole('button',{name:'Actualizar actividad'}));
+    await screen.findByText(notice.message);
+    expect(screen.queryByRole('alert')).toBeNull();
 });
