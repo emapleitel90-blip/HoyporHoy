@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
+import { notifyActivityChanged } from '../utils/activityEvents';
 import { DollarSign, Plus, Download, Paperclip } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { downloadCaseFile, errorMessage } from '../utils/caseFiles';
@@ -70,6 +71,7 @@ export const ExpensePanel = ({ caseId, onReceiptSaved }) => {
                     if (version === actionVersion.current && event.total) setProgress(Math.round(event.loaded * 100 / event.total));
                 },
             });
+            notifyActivityChanged();
             if (version !== actionVersion.current) return;
             setExpenses(previous => [data, ...previous]);
             setFormData(blankForm());
@@ -94,6 +96,7 @@ export const ExpensePanel = ({ caseId, onReceiptSaved }) => {
             const payload = new FormData();
             payload.append('file', file); payload.append('version', expense.updatedAt);
             const { data } = await axios.post(api.expenses.receipt(expense.id), payload, { headers: headers() });
+            notifyActivityChanged();
             if (version !== actionVersion.current) return;
             setExpenses(previous => previous.map(item => item.id === data.id ? data : item));
             onReceiptSaved?.(data.receipt);

@@ -81,3 +81,9 @@ Los paneles de archivos, seguimiento y honorarios emiten notifications-updated s
 Si el aviso llega durante una consulta, la campana conserva una actualización pendiente y agrupa las señales simultáneas en una sola consulta posterior. Al cambiar de usuario o desmontar, descarta las respuestas antiguas y limpia los listeners. El contador rechaza valores negativos o que no sean enteros seguros.
 
 Validación específica: 29 pruebas aprobadas en seis archivos de interfaz, incluidos carga fallida/confirmada, aviso durante consulta, cambio de usuario, limpieza, seguimiento, honorarios, comprobantes y listado de actividad. ESLint y compilación de producción aprobados; continúa la advertencia conocida del módulo Excel. Esta etapa no incluye una nueva prueba manual con cambios en la base de demostración ni cambios del servidor.
+
+### Tareas, escritos, gastos y vencimientos
+
+La señal inmediata también se emite al crear tareas y confirmar sus transiciones, guardar escritos o nuevas versiones (incluida restauración como versión nueva), registrar gastos o adjuntar comprobantes, y crear o completar/reabrir vencimientos. En escritos y entregas vinculadas se conserva la validación de la respuesta antes de emitir la señal. Una consulta o descarga no la emite. Los registros y permisos siguen siendo los del servidor.
+
+Verificación de esta ampliación: 28 pruebas aprobadas en TaskWritingReview, WrittenDocumentsPanel, ExpensePanel, DeadlinePanel y NotificationBell. Se comprobaron señales después del éxito y su ausencia ante guardados fallidos en escritos, gastos y vencimientos. ESLint y compilación aprobados, con la advertencia conocida de tamaño de Excel; salida temporal en server/scratch/activity-circuits-build. No se repitió la suite completa ni se modificó la base de demostración para una prueba manual. Las acciones de vencimientos incorporan nombres accesibles para fecha y completar/reabrir.

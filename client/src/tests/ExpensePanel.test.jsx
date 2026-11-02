@@ -2,6 +2,8 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import axios from 'axios';
+import { notifyActivityChanged } from '../utils/activityEvents';
+vi.mock('../utils/activityEvents', () => ({ notifyActivityChanged: vi.fn() }));
 import { ExpensePanel } from '../components/ExpensePanel';
 import { api } from '../config/api';
 
@@ -53,6 +55,7 @@ describe('Comprobantes de gastos: carga real y estados de la pantalla', () => {
         expect(payload.get('receiptUrl')).toBeNull();
         expect(options.headers).toEqual({ Authorization: 'Bearer test-token' });
         expect(saved).toHaveBeenCalledWith(receipt);
+        expect(notifyActivityChanged).toHaveBeenCalledTimes(1);
         expect(screen.getByRole('button', { name: 'Descargar comprobante de Tasa de justicia' })).toBeTruthy();
         expect(screen.getByText(/Total:/).textContent).toContain('123,45');
         expect(screen.getByLabelText('Descripción del gasto').value).toBe('');
@@ -76,6 +79,7 @@ describe('Comprobantes de gastos: carga real y estados de la pantalla', () => {
         await ready(); fill();
         fireEvent.click(screen.getByRole('button', { name: 'Añadir' }));
         await waitFor(() => expect(showToast).toHaveBeenCalledWith('No se pudo guardar', 'error'));
+        expect(notifyActivityChanged).not.toHaveBeenCalled();
         expect(screen.getByLabelText('Descripción del gasto').value).toBe(expense.description);
         expect(screen.getByText('recibo.pdf')).toBeTruthy();
         expect(saved).not.toHaveBeenCalled();

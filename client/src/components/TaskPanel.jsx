@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { api } from '../config/api';
+import { notifyActivityChanged } from '../utils/activityEvents';
 import { useAuth } from '../context/AuthContext';
 import { TaskWritingVersion } from './TaskWritingVersion';
 
@@ -73,6 +74,7 @@ export const TaskPanel = ({ caseItem, inbox = false }) => {
             await axios.post(api.tasks.create(caseId), {
                 ...form, dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : null,
             }, { headers: headers() });
+            notifyActivityChanged();
             setForm(blankForm);
             await load();
         } catch (err) {
@@ -98,6 +100,7 @@ export const TaskPanel = ({ caseItem, inbox = false }) => {
             ++loadVersion.current;
             const { data } = await axios.put(api.tasks[operation](task.id), payload, { headers: headers() });
             if (linked && !data.events?.some(event => event.requestId === payload.requestId)) throw new Error('Respuesta inválida');
+            notifyActivityChanged();
             setTasks(current => current.map(item => item.id === task.id ? data : item)
                 .filter(item => !inbox || (filter === 'mine' ? item.status !== 'APPROVED' : item.status === 'SUBMITTED')));
             setNotes(current => ({ ...current, [task.id]: '' }));

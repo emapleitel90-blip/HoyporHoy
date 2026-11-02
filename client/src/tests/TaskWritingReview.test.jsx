@@ -2,6 +2,8 @@ import React from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import axios from 'axios';
+import { notifyActivityChanged } from '../utils/activityEvents';
+vi.mock('../utils/activityEvents', () => ({ notifyActivityChanged: vi.fn() }));
 import { TaskPanel } from '../components/TaskPanel';
 import { api } from '../config/api';
 vi.mock('axios', () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn() } }));
@@ -25,4 +27,5 @@ it('espera el texto y aprueba la entrega seleccionada aunque exista una versión
     expect(axios.put.mock.calls[0][1]).toMatchObject({submissionId:'delivery',decision:'APPROVED'});
     expect(axios.put.mock.calls[0][1].requestId).toMatch(/^[0-9a-f-]{36}$/);
     await screen.findByText('Escrito · versión 2 · Aprobada en esta entrega');
+    expect(notifyActivityChanged).toHaveBeenCalledTimes(1);
 });

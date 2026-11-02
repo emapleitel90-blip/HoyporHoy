@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
+import { notifyActivityChanged } from '../utils/activityEvents';
 import { Clock, Plus, CheckCircle, Circle } from 'lucide-react';
 
 export const DeadlinePanel = ({ caseId }) => {
@@ -35,6 +36,7 @@ export const DeadlinePanel = ({ caseId }) => {
                 title: newTitle,
                 dueDate: newDate,
             }, { headers: { Authorization: `Bearer ${token}` } });
+            notifyActivityChanged();
             setNewTitle('');
             setNewDate('');
             fetchDeadlines();
@@ -50,6 +52,7 @@ export const DeadlinePanel = ({ caseId }) => {
             await axios.put(api.deadlines.update(deadline.id), {
                 isCompleted: !deadline.isCompleted,
             }, { headers: { Authorization: `Bearer ${token}` } });
+            notifyActivityChanged();
             fetchDeadlines();
         } catch (err) {
             console.error('Update deadline error', err);
@@ -77,7 +80,8 @@ export const DeadlinePanel = ({ caseId }) => {
                         required
                     />
                     <input 
-                        type="date" 
+                        type="date"
+                        aria-label="Fecha del vencimiento"
                         className="border-gray-300 rounded-lg text-sm"
                         value={newDate}
                         onChange={(e) => setNewDate(e.target.value)}
@@ -95,7 +99,7 @@ export const DeadlinePanel = ({ caseId }) => {
                         deadlines.map(d => (
                             <div key={d.id} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <button onClick={() => toggleStatus(d)} className="text-gray-400 hover:text-primary transition-colors cursor-pointer">
+                                    <button aria-label={`${d.isCompleted ? 'Reabrir' : 'Completar'} vencimiento: ${d.title}`} onClick={() => toggleStatus(d)} className="text-gray-400 hover:text-primary transition-colors cursor-pointer">
                                         {d.isCompleted ? <CheckCircle className="w-5 h-5 text-green-500" /> : <Circle className="w-5 h-5 text-gray-400" />}
                                     </button>
                                     <div>

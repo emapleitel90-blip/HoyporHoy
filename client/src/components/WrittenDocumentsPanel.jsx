@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
+import { notifyActivityChanged } from '../utils/activityEvents';
 import { useAuth } from '../context/AuthContext';
 import { errorMessage } from '../utils/caseFiles';
 import { WritingTemplateLibrary } from './WritingTemplateLibrary';
@@ -50,6 +51,7 @@ function WritingEditor({ caseId, writing, seed, canWrite, busy, onBusyChange, on
                 saved.previousVersion !== (writing ? expectedVersion.current : 0) || saved.number !== (writing ? expectedVersion.current + 1 : 1)) {
                 throw new Error('Respuesta inválida');
             }
+            notifyActivityChanged();
             onSaved(data);
         } catch (err) {
             if (err.response?.status === 409) setConflict(true);

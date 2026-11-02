@@ -2,6 +2,8 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import axios from 'axios';
+import { notifyActivityChanged } from '../utils/activityEvents';
+vi.mock('../utils/activityEvents', () => ({ notifyActivityChanged: vi.fn() }));
 import { WrittenDocumentsPanel } from '../components/WrittenDocumentsPanel';
 import { api } from '../config/api';
 
@@ -91,6 +93,7 @@ describe('Escritos manuales y versiones guardadas', () => {
         await startNew(); change('Nota inicial (opcional)', '  Nota de trabajo  ');
         fireEvent.click(screen.getByRole('button', { name: 'Guardar escrito' }));
         await screen.findByText('Escrito guardado. Versión 1 disponible.');
+        expect(notifyActivityChanged).toHaveBeenCalledTimes(1);
         const [url, payload, options] = axios.post.mock.calls[0];
         expect(url).toBe(api.writings.byCase('case-a'));
         expect(payload).toEqual({ title: 'Presentación manual', content: 'Primer párrafo.\n  Texto con sangría.', notes: 'Nota de trabajo', requestId: expect.any(String) });
@@ -112,6 +115,7 @@ describe('Escritos manuales y versiones guardadas', () => {
         expect(axios.post.mock.calls[2][1].requestId).not.toBe(first);
         expect(screen.getByLabelText('Texto del escrito').value).toBe('Otro texto conservado.');
         expect(screen.queryByText(/Escrito guardado\. Versión/)).toBeNull();
+        expect(notifyActivityChanged).not.toHaveBeenCalled();
     });
 
     it('no informa éxito ante una respuesta que no confirma el contenido solicitado', async () => {
