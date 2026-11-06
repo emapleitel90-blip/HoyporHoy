@@ -1,3 +1,7 @@
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
 import React, { useRef, useState } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
@@ -64,28 +68,28 @@ export function FeeAgreementEditor({ agreement, busy, onBusyChange, onSaved, onC
         } finally { onBusyChange(false); }
     };
 
-    return <form onSubmit={submit} className="border border-indigo-200 rounded-lg p-4 grid gap-3">
+    return <form onSubmit={submit} className="border border-ring rounded-lg p-4 grid gap-3">
         <h3 className="font-semibold">Modificar acuerdo y cuotas</h3>
         <p className="text-sm">Cada cambio conserva sus valores anteriores, motivo, autor y fecha. Los pagos registrados mantienen su historial.</p>
-        <label>Descripción actualizada del acuerdo<textarea required maxLength={2000} disabled={busy} className="block border rounded p-2 w-full" value={draft.description}
-            onChange={event => change({ ...draft, description: event.target.value })} /></label>
+        <Label>Descripción actualizada del acuerdo<Textarea required maxLength={2000} disabled={busy} className="block border rounded p-2 w-full" value={draft.description}
+            onChange={event => change({ ...draft, description: event.target.value })} /></Label>
         {draft.installments.map((item, index) => <fieldset key={item.id || 'new-' + index} className="border rounded p-3 flex flex-wrap gap-3">
             <legend>Cuota {index + 1}{index >= originalCount ? ' · nueva' : ''}</legend>
-            <label>Nuevo importe de cuota {index + 1}<input type="number" min={Math.max(1, item.paidCents) / 100} max="20000000" step="0.01" required disabled={busy}
-                className="block border rounded p-2" value={item.amount} onChange={event => changeQuota(index, 'amount', event.target.value)} /></label>
-            <label>Nuevo vencimiento de cuota {index + 1}<input type="date" required disabled={busy} className="block border rounded p-2" value={item.dueDate}
-                onChange={event => changeQuota(index, 'dueDate', event.target.value)} /></label>
+            <Label>Nuevo importe de cuota {index + 1}<Input type="number" min={Math.max(1, item.paidCents) / 100} max="20000000" step="0.01" required disabled={busy}
+                className="block border rounded p-2" value={item.amount} onChange={event => changeQuota(index, 'amount', event.target.value)} /></Label>
+            <Label>Nuevo vencimiento de cuota {index + 1}<Input type="date" required disabled={busy} className="block border rounded p-2" value={item.dueDate}
+                onChange={event => changeQuota(index, 'dueDate', event.target.value)} /></Label>
             <p className="text-sm w-full">Ya abonado: {money(item.paidCents)}. Se conserva el número y el historial de esta cuota.</p>
-            {index >= originalCount && <button type="button" disabled={busy} onClick={() => change({ ...draft, installments: draft.installments.filter((_, i) => i !== index) })}>Quitar nueva cuota {index + 1}</button>}
+            {index >= originalCount && <Button variant="legacy" size="legacy" type="button" disabled={busy} onClick={() => change({ ...draft, installments: draft.installments.filter((_, i) => i !== index) })}>Quitar nueva cuota {index + 1}</Button>}
         </fieldset>)}
-        <button type="button" disabled={busy || draft.installments.length >= 60} onClick={() => change({ ...draft,
-            installments: [...draft.installments, { amount: '', dueDate: '', paidCents: 0 }] })}>Agregar cuota al acuerdo</button>
-        <label>Motivo del cambio<textarea required maxLength={2000} disabled={busy} className="block border rounded p-2 w-full" value={reason}
-            onChange={event => { requestId.current = null; setReason(event.target.value); }} /></label>
-        {error && <p role="alert" className="text-red-700">{error}</p>}
-        {conflict && <button type="button" disabled={busy} className="underline" onClick={onDiscardAndReload}>Descartar edición y actualizar acuerdo</button>}
-        <button disabled={busy} className="bg-indigo-600 text-white rounded p-2">{busy ? 'Guardando cambio…' : 'Guardar cambios del acuerdo'}</button>
-        <button type="button" disabled={busy} onClick={onCancel}>Cancelar edición del acuerdo</button>
+        <Button variant="legacy" size="legacy" type="button" disabled={busy || draft.installments.length >= 60} onClick={() => change({ ...draft,
+            installments: [...draft.installments, { amount: '', dueDate: '', paidCents: 0 }] })}>Agregar cuota al acuerdo</Button>
+        <Label>Motivo del cambio<Textarea required maxLength={2000} disabled={busy} className="block border rounded p-2 w-full" value={reason}
+            onChange={event => { requestId.current = null; setReason(event.target.value); }} /></Label>
+        {error && <p role="alert" className="text-status-red">{error}</p>}
+        {conflict && <Button variant="legacy" size="legacy" type="button" disabled={busy} className="underline" onClick={onDiscardAndReload}>Descartar edición y actualizar acuerdo</Button>}
+        <Button variant="legacy" size="legacy" disabled={busy} className="bg-indigo-600 text-white rounded p-2">{busy ? 'Guardando cambio…' : 'Guardar cambios del acuerdo'}</Button>
+        <Button variant="legacy" size="legacy" type="button" disabled={busy} onClick={onCancel}>Cancelar edición del acuerdo</Button>
     </form>;
 }
 

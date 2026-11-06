@@ -1,3 +1,6 @@
+import { Card } from './ui/card';
+import { Label } from './ui/label';
+import { Button } from './ui/button';
 import React, { useEffect, useRef, useState } from 'react';
 import { File, Upload, Trash2, Download, ExternalLink, Paperclip } from 'lucide-react';
 import axios from 'axios';
@@ -47,7 +50,7 @@ export const CaseFilePanel = ({ caseId, initialFiles = EMPTY_FILES, onFilesChang
             const { data } = await axios.post(api.cases.addFile(caseId), payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            
+
             notifyActivityChanged();
             if (activeCase.current !== caseId) return;
             updateFiles([...latestFiles.current, data]);
@@ -88,16 +91,16 @@ export const CaseFilePanel = ({ caseId, initialFiles = EMPTY_FILES, onFilesChang
     };
 
     return (
-        <div id="case-files" className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+        <Card id="case-files" className="bg-card rounded-xl shadow-sm border border-border overflow-hidden mt-6">
+            <div className="px-6 py-4 border-b border-border bg-background flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <Paperclip className="w-4 h-4 text-primary" />
+                    <Paperclip className="w-4 h-4 text-link" />
                     <div>
-                        <h3 className="text-base font-semibold text-gray-900">Documentación y Archivos</h3>
-                        <p className="text-[10px] text-gray-500 font-medium mt-0.5">PDF, Word, Excel, PNG, JPG y WebP · Hasta 20 MB por archivo</p>
+                        <h3 className="text-base font-semibold text-foreground">Documentación y Archivos</h3>
+                        <p className="text-[10px] text-muted-foreground font-medium mt-0.5">PDF, Word, Excel, PNG, JPG y WebP · Hasta 20 MB por archivo</p>
                     </div>
                 </div>
-                <label className="cursor-pointer bg-primary text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary-light transition-colors flex items-center gap-2">
+                <Label className="cursor-pointer bg-primary text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary-light transition-colors flex items-center gap-2">
                     {uploading ? (
                         <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
@@ -105,12 +108,12 @@ export const CaseFilePanel = ({ caseId, initialFiles = EMPTY_FILES, onFilesChang
                     )}
                     Subir Archivo
                     <input type="file" aria-label="Subir archivo al expediente" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp" className="hidden" onChange={handleFileUpload} disabled={uploading} />
-                </label>
+                </Label>
             </div>
-            
+
             <div className="p-6">
                 {files.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400">
+                    <div className="text-center py-8 text-muted-foreground">
                         <File className="w-8 h-8 mx-auto mb-2 opacity-20" />
                         <p className="text-sm font-medium">No hay archivos adjuntos</p>
                         <p className="text-xs mt-1">Sube Excel (.xlsx), PDFs, o imágenes relevantes para este expediente.</p>
@@ -118,50 +121,50 @@ export const CaseFilePanel = ({ caseId, initialFiles = EMPTY_FILES, onFilesChang
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" aria-live="polite">
                         {files.map(file => (
-                            <div key={file.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-primary/30 transition-all bg-slate-50/50 group">
+                            <div key={file.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary/30 transition-all bg-background/50 group">
                                 <div className="flex items-center gap-3 overflow-hidden">
-                                    <div className="p-2 bg-white rounded-lg border border-gray-100 group-hover:border-primary/20 transition-colors">
-                                        <File className="w-4 h-4 text-primary" />
-                                    </div>
+                                    <Card className="p-2 bg-card rounded-lg border border-border group-hover:border-primary/20 transition-colors">
+                                        <File className="w-4 h-4 text-link" />
+                                    </Card>
                                     <div className="truncate">
-                                        <p className="text-sm font-semibold text-gray-900 truncate" title={file.name}>{file.name}</p>
-                                        <p className="text-[10px] text-gray-400">{new Date(file.createdAt).toLocaleDateString()}</p>
-                                        {!isPrivateFile(file) && <p className="text-xs text-amber-700">{legacyLink(file) ? 'Enlace anterior; carga privada sin verificar' : 'Registro anterior sin archivo disponible'}</p>}
+                                        <p className="text-sm font-semibold text-foreground truncate" title={file.name}>{file.name}</p>
+                                        <p className="text-[10px] text-muted-foreground">{new Date(file.createdAt).toLocaleDateString()}</p>
+                                        {!isPrivateFile(file) && <p className="text-xs text-status-amber">{legacyLink(file) ? 'Enlace anterior; carga privada sin verificar' : 'Registro anterior sin archivo disponible'}</p>}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    {isPrivateFile(file) ? <button
+                                    {isPrivateFile(file) ? <Button variant="legacy" size="legacy"
                                         type="button"
                                         onClick={() => handleDownload(file)}
                                         disabled={!!downloadingId || deletingId === file.id}
-                                        className="p-1.5 text-gray-500 hover:text-primary hover:bg-white rounded-md disabled:opacity-40"
+                                        className="p-1.5 text-muted-foreground hover:text-link hover:bg-card rounded-md disabled:opacity-40"
                                         aria-label={`Descargar ${file.name}`}
                                         title="Descargar archivo"
-                                    ><Download className="w-4 h-4" /></button> : legacyLink(file) && <a
+                                    ><Download className="w-4 h-4" /></Button> : legacyLink(file) && <a
                                         href={legacyLink(file)}
-                                        target="_blank" 
+                                        target="_blank"
                                         rel="noopener noreferrer"
-                                        className="p-1.5 text-gray-400 hover:text-primary hover:bg-white rounded-md transition-all"
+                                        className="p-1.5 text-muted-foreground hover:text-link hover:bg-card rounded-md transition-all"
                                         title="Abrir enlace anterior"
                                         aria-label={`Abrir enlace anterior de ${file.name}`}
                                     >
                                         <ExternalLink className="w-4 h-4" />
                                     </a>}
-                                    <button 
+                                    <Button variant="legacy" size="legacy"
                                         onClick={() => handleDeleteFile(file.id)}
                                         disabled={!!deletingId || downloadingId === file.id}
-                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-white rounded-md transition-all"
+                                        className="p-1.5 text-muted-foreground hover:text-status-red hover:bg-card rounded-md transition-all"
                                         title="Eliminar"
                                         aria-label={`Eliminar ${file.name}`}
                                     >
                                         <Trash2 className="w-4 h-4" />
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
-        </div>
+        </Card>
     );
 };

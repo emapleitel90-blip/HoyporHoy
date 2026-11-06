@@ -1,3 +1,6 @@
+import { Card } from './ui/card';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
@@ -69,56 +72,56 @@ function Deadlines({ caseId }) {
     const toggleStatus = deadline => save(deadline);
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+        <Card className="bg-card rounded-xl shadow-sm border border-border overflow-hidden mt-6">
+            <div className="px-6 py-4 border-b border-border bg-background flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-primary" />
-                    <h3 className="text-base font-semibold text-gray-900">Agenda de Vencimientos</h3>
+                    <Clock className="w-4 h-4 text-link" />
+                    <h3 className="text-base font-semibold text-foreground">Agenda de Vencimientos</h3>
                 </div>
             </div>
             <div className="p-6">
-                <button type="button" disabled={busy || loading} onClick={fetchDeadlines} className="underline mb-3">Actualizar vencimientos</button>
-                {loadError && <p role="alert" className="text-red-700 mb-3">{loadError}</p>}
-                {saveError && <p role="alert" className="text-red-700 mb-3">{saveError}</p>}
-                {notice && <p role="status" className="text-green-700 mb-3">{notice}</p>}
+                <Button variant="legacy" size="legacy" type="button" disabled={busy || loading} onClick={fetchDeadlines} className="underline mb-3">Actualizar vencimientos</Button>
+                {loadError && <p role="alert" className="text-status-red mb-3">{loadError}</p>}
+                {saveError && <p role="alert" className="text-status-red mb-3">{saveError}</p>}
+                {notice && <p role="status" className="text-status-green mb-3">{notice}</p>}
                 <form onSubmit={handleAdd} className="flex flex-wrap gap-2 mb-4">
-                    <input 
-                        type="text" 
+                    <Input
+                        type="text"
                         placeholder="Descripción del plazo..."
                         aria-label="Descripción del vencimiento" maxLength={200} disabled={busy || loading || !!loadError}
-                        className="flex-1 border-gray-300 rounded-lg text-sm"
+                        className="flex-1 border-border rounded-lg text-sm"
                         value={newTitle}
                         onChange={(e) => setNewTitle(e.target.value)}
                         required
                     />
-                    <input 
+                    <Input
                         type="date"
                         aria-label="Fecha del vencimiento" disabled={busy || loading || !!loadError}
-                        className="border-gray-300 rounded-lg text-sm"
+                        className="border-border rounded-lg text-sm"
                         value={newDate}
                         onChange={(e) => setNewDate(e.target.value)}
                         required
                     />
-                    <button disabled={busy || loading || !!loadError} type="submit" className="bg-primary text-white p-2 text-sm rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-1">
+                    <Button variant="legacy" size="legacy" disabled={busy || loading || !!loadError} type="submit" className="bg-primary text-white p-2 text-sm rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-1">
                         <Plus className="w-4 h-4"/> Añadir
-                    </button>
+                    </Button>
                 </form>
 
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                     {loading ? <p role="status">Cargando plazos...</p> : loadError ? null : deadlines.length === 0 ? (
-                        <p className="text-sm text-gray-400 italic">No hay plazos registrados.</p>
+                        <p className="text-sm text-muted-foreground italic">No hay plazos registrados.</p>
                     ) : (
                         deadlines.map(d => (
-                            <div key={d.id} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                            <div key={d.id} className="flex items-center justify-between p-3 border rounded-lg bg-background hover:bg-muted transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <button type="button" disabled={busy || loading} aria-label={`${d.isCompleted ? 'Reabrir' : 'Completar'} vencimiento: ${d.title}`} onClick={() => toggleStatus(d)} className="text-gray-400 hover:text-primary transition-colors cursor-pointer">
-                                        {d.isCompleted ? <CheckCircle className="w-5 h-5 text-green-500" /> : <Circle className="w-5 h-5 text-gray-400" />}
-                                    </button>
+                                    <Button variant="legacy" size="legacy" type="button" disabled={busy || loading} aria-label={`${d.isCompleted ? 'Reabrir' : 'Completar'} vencimiento: ${d.title}`} onClick={() => toggleStatus(d)} className="text-muted-foreground hover:text-link transition-colors cursor-pointer">
+                                        {d.isCompleted ? <CheckCircle className="w-5 h-5 text-status-green" /> : <Circle className="w-5 h-5 text-muted-foreground" />}
+                                    </Button>
                                     <div>
-                                        <p className={`text-sm font-medium ${d.isCompleted ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                                        <p className={`text-sm font-medium ${d.isCompleted ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
                                             {d.title}
                                         </p>
-                                        <p className="text-xs text-gray-500">
+                                        <p className="text-xs text-muted-foreground">
                                             Vence: {new Date(d.dueDate).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Cordoba' })}
                                         </p>
                                     </div>
@@ -128,6 +131,6 @@ function Deadlines({ caseId }) {
                     )}
                 </div>
             </div>
-        </div>
+        </Card>
     );
 }

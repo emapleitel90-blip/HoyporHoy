@@ -37,7 +37,7 @@ export const NotificationBell = () => {
     }, [user?.id]);
 
     return (
-        <Link to="/notifications" aria-label={`Actividad y notificaciones: ${unreadCount} sin leer`} className="relative p-2 text-gray-500 hover:text-primary transition-colors cursor-pointer rounded-full hover:bg-gray-100">
+        <Link to="/notifications" aria-label={`Actividad y notificaciones: ${unreadCount} sin leer`} className="relative p-2 text-muted-foreground hover:text-link transition-colors cursor-pointer rounded-full hover:bg-muted">
             <Bell className="w-6 h-6" />
             {unreadCount > 0 && (
                 <span className="absolute top-1 right-1 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-red-500 rounded-full border border-white">

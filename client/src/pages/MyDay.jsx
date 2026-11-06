@@ -1,3 +1,5 @@
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -96,26 +98,26 @@ const MyDay = () => {
         };
 
         return (
-            <div className={`rounded-xl p-4 transition-all duration-200 hover:shadow-md ${variantStyles[variant]} border border-slate-200/60`}>
+            <div className={`rounded-xl p-4 transition-all duration-200 hover:shadow-md ${variantStyles[variant]} border border-border/60`}>
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-bold text-slate-800 truncate">{deadline.title}</h4>
+                        <h4 className="text-sm font-bold text-foreground truncate">{deadline.title}</h4>
                         <div className="mt-1.5 space-y-1">
-                            <p className="text-xs text-slate-600">
+                            <p className="text-xs text-secondary-foreground">
                                 <span className="font-semibold">Expediente:</span>{' '}
                                 {deadline.caseNumber || 'Sin número'} — {deadline.caseTitle || 'Sin carátula'}
                             </p>
                             <div className="flex flex-wrap gap-x-4 gap-y-1">
-                                <p className="text-xs text-slate-500">
+                                <p className="text-xs text-muted-foreground">
                                     <span className="font-medium">Fecha:</span> {formatDate(deadline.dueDate)} · {formatTime(deadline.dueDate)}
                                 </p>
                                 {deadline.fuero && (
-                                    <p className="text-xs text-slate-500">
+                                    <p className="text-xs text-muted-foreground">
                                         <span className="font-medium">Fuero:</span> {deadline.fuero}
                                     </p>
                                 )}
                                 {deadline.assignedLawyer && (
-                                    <p className="text-xs text-slate-500">
+                                    <p className="text-xs text-muted-foreground">
                                         <span className="font-medium">Abogado:</span> {deadline.assignedLawyer}
                                     </p>
                                 )}
@@ -123,21 +125,21 @@ const MyDay = () => {
                         </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
+                        <Button variant="legacy" size="legacy"
                             onClick={() => navigate(`/cases/${deadline.caseId}`)}
-                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-link bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
                             title="Ver expediente"
                         >
                             <Eye size={14} />
                             <span className="hidden sm:inline">Ver</span>
-                        </button>
-                        <button
+                        </Button>
+                        <Button variant="legacy" size="legacy"
                             onClick={() => handleComplete(deadline.id)}
                             disabled={isCompleting}
                             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition-colors ${
                                 isCompleting
-                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                    : 'text-green-700 bg-green-50 hover:bg-green-100'
+                                    ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                                    : 'text-status-green bg-green-50 hover:bg-green-100'
                             }`}
                             title="Marcar como cumplido"
                         >
@@ -147,7 +149,7 @@ const MyDay = () => {
                                 <CheckCircle size={14} />
                             )}
                             <span className="hidden sm:inline">{isCompleting ? 'Guardando...' : 'Cumplido'}</span>
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -156,23 +158,23 @@ const MyDay = () => {
 
     // --- Componente interno: Sección ---
     const Section = ({ title, icon: Icon, iconColor, count, items, variant, emptyText }) => (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <Card className="bg-card rounded-2xl shadow-sm border border-border/60 overflow-hidden">
+            <div className="px-6 py-4 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconColor}`}>
                         <Icon size={16} className="text-white" />
                     </div>
-                    <h3 className="text-base font-bold text-slate-800">{title}</h3>
+                    <h3 className="text-base font-bold text-foreground">{title}</h3>
                 </div>
                 <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                    count > 0 ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-400'
+                    count > 0 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
                 }`}>
                     {count}
                 </span>
             </div>
             <div className="p-4 space-y-3">
                 {items.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                         <Inbox size={32} className="mb-2 opacity-50" />
                         <p className="text-sm font-medium">{emptyText}</p>
                     </div>
@@ -180,13 +182,13 @@ const MyDay = () => {
                     items.map((d) => <DeadlineCard key={d.id} deadline={d} variant={variant} />)
                 )}
             </div>
-        </div>
+        </Card>
     );
 
     // --- Estados de carga y error ---
     if (loading) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                 <Loader2 size={40} className="animate-spin mb-4" />
                 <p className="text-base font-medium">Cargando tu jornada...</p>
             </div>
@@ -199,16 +201,16 @@ const MyDay = () => {
             <TaskPanel inbox />
             <FollowUpPanel inbox />
             <FeePanel inbox />
-            <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                 <AlertTriangle size={40} className="mb-4 text-red-400" />
                 <p className="text-base font-medium mb-4">{error}</p>
-                <button
+                <Button variant="legacy" size="legacy"
                     onClick={() => { setLoading(true); fetchMyDay(); }}
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
                 >
                     <RefreshCw size={14} />
                     Reintentar
-                </button>
+                </Button>
             </div>
             </div>
         );
@@ -219,18 +221,18 @@ const MyDay = () => {
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tight">Mi jornada</h1>
-                    <p className="text-sm text-slate-500 mt-1">
+                    <h1 className="text-2xl font-black text-foreground tracking-tight">Mi jornada</h1>
+                    <p className="text-sm text-muted-foreground mt-1">
                         Vencimientos que requieren tu atención — {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
                 </div>
-                <button
+                <Button variant="legacy" size="legacy"
                     onClick={() => { setLoading(true); fetchMyDay(); }}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 text-sm font-semibold rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-card border border-border text-secondary-foreground text-sm font-semibold rounded-xl hover:bg-background transition-colors shadow-sm"
                 >
                     <RefreshCw size={14} />
                     Actualizar
-                </button>
+                </Button>
             </div>
 
             {/* Resumen rápido */}
@@ -243,8 +245,8 @@ const MyDay = () => {
                         <AlertTriangle size={18} className="text-white" />
                     </div>
                     <div>
-                        <p className="text-2xl font-black text-red-700">{data.counts.overdue}</p>
-                        <p className="text-xs font-bold text-red-500 uppercase tracking-wider">Vencidos</p>
+                        <p className="text-2xl font-black text-status-red">{data.counts.overdue}</p>
+                        <p className="text-xs font-bold text-status-red uppercase tracking-wider">Vencidos</p>
                     </div>
                 </div>
                 <div className="bg-amber-50 border border-amber-200/60 rounded-xl p-4 flex items-center gap-3">
@@ -252,17 +254,17 @@ const MyDay = () => {
                         <Clock size={18} className="text-white" />
                     </div>
                     <div>
-                        <p className="text-2xl font-black text-amber-700">{data.counts.today}</p>
-                        <p className="text-xs font-bold text-amber-500 uppercase tracking-wider">Hoy</p>
+                        <p className="text-2xl font-black text-status-amber">{data.counts.today}</p>
+                        <p className="text-xs font-bold text-status-amber uppercase tracking-wider">Hoy</p>
                     </div>
                 </div>
-                <div className="bg-blue-50 border border-blue-200/60 rounded-xl p-4 flex items-center gap-3">
+                <div className="bg-blue-50 border border-ring/60 rounded-xl p-4 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center">
                         <CalendarDays size={18} className="text-white" />
                     </div>
                     <div>
-                        <p className="text-2xl font-black text-blue-700">{data.counts.upcoming}</p>
-                        <p className="text-xs font-bold text-blue-500 uppercase tracking-wider">Próximos 7 días</p>
+                        <p className="text-2xl font-black text-link">{data.counts.upcoming}</p>
+                        <p className="text-xs font-bold text-link uppercase tracking-wider">Próximos 7 días</p>
                     </div>
                 </div>
             </div>

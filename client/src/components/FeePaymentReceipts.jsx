@@ -1,3 +1,6 @@
+import { Button } from './ui/button';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
 import React, { useRef, useState } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
@@ -23,10 +26,10 @@ export function FeePaymentReceipts({ payment, label, canWrite, busy, editing, on
         <p>{time(receipt.createdAt)} · {receipt.uploadedByName || receipt.uploadedById}</p>
         {receipt.reason && <p className="whitespace-pre-wrap">Motivo del reemplazo: {receipt.reason}</p>}
         {receipt.fileStatus === 'AVAILABLE' && receipt.file && isPrivateFile(receipt.file)
-            ? <button type="button" className="underline" disabled={busy || !!downloading} onClick={() => download(receipt)}>
+            ? <Button variant="legacy" size="legacy" type="button" className="underline" disabled={busy || !!downloading} onClick={() => download(receipt)}>
                 {downloading === receipt.id ? 'Descargando…' : 'Descargar comprobante ' + receipt.sequence + ' de ' + label}
-            </button>
-            : <p className="text-amber-800">El archivo de este comprobante no está disponible.</p>}
+            </Button>
+            : <p className="text-status-amber">El archivo de este comprobante no está disponible.</p>}
     </article>;
 
     return <div className="mt-3 space-y-2">
@@ -35,11 +38,11 @@ export function FeePaymentReceipts({ payment, label, canWrite, busy, editing, on
             <summary className="cursor-pointer underline">Comprobantes anteriores de {label}</summary>
             <div className="space-y-2 mt-2">{receipts.slice(1).map(item => receiptRow(item, false))}</div>
         </details>}
-        {payment.reversal && receipts.length > 0 && <p className="text-amber-800">Pago anulado: se conservan los comprobantes como parte del historial.</p>}
-        {canWrite && !payment.reversal && !editing && <button type="button" disabled={busy} onClick={onEdit} className="underline">
+        {payment.reversal && receipts.length > 0 && <p className="text-status-amber">Pago anulado: se conservan los comprobantes como parte del historial.</p>}
+        {canWrite && !payment.reversal && !editing && <Button variant="legacy" size="legacy" type="button" disabled={busy} onClick={onEdit} className="underline">
             {receipts.length ? 'Reemplazar comprobante de ' : 'Adjuntar comprobante a '}{label}
-        </button>}
-        {downloadError && <p role="alert" className="text-red-700">{downloadError}</p>}
+        </Button>}
+        {downloadError && <p role="alert" className="text-status-red">{downloadError}</p>}
     </div>;
 }
 
@@ -99,21 +102,21 @@ export function FeePaymentReceiptEditor({ payment, label, caseId, agreementVersi
 
     if (blockedReason) return <div className="border rounded-lg p-3 space-y-2">
         <p role="alert">{blockedReason}</p>
-        <button type="button" disabled={busy} onClick={onClose}>Cerrar comprobante</button>
+        <Button variant="legacy" size="legacy" type="button" disabled={busy} onClick={onClose}>Cerrar comprobante</Button>
     </div>;
     return <form onSubmit={submit} className="border rounded-lg p-3 grid gap-3">
         <h4 className="font-medium">{replacing ? 'Reemplazar comprobante de ' : 'Adjuntar comprobante a '}{label}</h4>
         <p>Archivo privado de hasta 20 MB. Adjuntar un comprobante no verifica el contenido del pago. Los archivos anteriores se conservan.</p>
-        <label>Comprobante para {label}<input type="file" accept={FORMATS} disabled={busy} onChange={choose} className="block w-full" /></label>
+        <Label>Comprobante para {label}<input type="file" accept={FORMATS} disabled={busy} onChange={choose} className="block w-full" /></Label>
         {file && <p>Archivo seleccionado: {file.name}</p>}
-        <label>Motivo del comprobante para {label}{replacing ? ' (obligatorio)' : ' (opcional)'}
-            <textarea required={replacing} maxLength={2000} disabled={busy} className="block w-full border rounded p-2" value={reason}
+        <Label>Motivo del comprobante para {label}{replacing ? ' (obligatorio)' : ' (opcional)'}
+            <Textarea required={replacing} maxLength={2000} disabled={busy} className="block w-full border rounded p-2" value={reason}
                 onChange={event => { requestId.current = null; setReason(event.target.value); }} />
-        </label>
+        </Label>
         {busy && <p role="status">{progress === 100 ? 'Archivo enviado. Confirmando guardado…' : progress === null ? 'Subiendo comprobante…' : 'Subiendo comprobante: ' + progress + '%'}</p>}
-        {error && <p role="alert" className="text-red-700">{error}</p>}
-        {conflict && <button type="button" disabled={busy} className="underline" onClick={onRefresh}>Descartar selección y actualizar honorarios</button>}
-        <button disabled={busy || !file} className="bg-indigo-600 text-white rounded p-2">{busy ? 'Guardando comprobante…' : 'Guardar comprobante'}</button>
-        <button type="button" disabled={busy} onClick={onClose}>Cancelar comprobante</button>
+        {error && <p role="alert" className="text-status-red">{error}</p>}
+        {conflict && <Button variant="legacy" size="legacy" type="button" disabled={busy} className="underline" onClick={onRefresh}>Descartar selección y actualizar honorarios</Button>}
+        <Button variant="legacy" size="legacy" disabled={busy || !file} className="bg-indigo-600 text-white rounded p-2">{busy ? 'Guardando comprobante…' : 'Guardar comprobante'}</Button>
+        <Button variant="legacy" size="legacy" type="button" disabled={busy} onClick={onClose}>Cancelar comprobante</Button>
     </form>;
 }

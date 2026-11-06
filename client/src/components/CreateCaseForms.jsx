@@ -1,38 +1,44 @@
+import { Label } from './ui/label';
+import { Input } from './ui/input';
+import { NativeSelect } from './ui/native-select';
+import { Textarea as TextareaControl } from './ui/textarea';
 import React from 'react';
 import { Info } from 'lucide-react';
 
 export const Field = ({ label, name, type = 'text', value, onChange, required, placeholder }) => (
     <div className="space-y-1.5">
-        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{label} {required && '*'}</label>
-        <input
+        <Label htmlFor={`case-field-${name}`} className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">{label} {required && '*'}</Label>
+        <Input
+            id={`case-field-${name}`}
             name={name}
             type={type}
             value={value || ''}
             onChange={onChange}
             required={required}
             placeholder={placeholder}
-            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-300"
+            className="w-full px-4 py-3 rounded-xl border border-border focus:ring-4 focus:ring-ring/10 focus:border-ring transition-all text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground"
         />
     </div>
 );
 
 export const Select = ({ label, name, value, onChange, options, required }) => (
     <div className="space-y-1.5">
-        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{label} {required && '*'}</label>
+        <Label htmlFor={`case-field-${name}`} className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">{label} {required && '*'}</Label>
         <div className="relative">
-            <select
+            <NativeSelect
+                id={`case-field-${name}`}
                 name={name}
                 value={value || ''}
                 onChange={onChange}
                 required={required}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm font-bold text-slate-700 outline-none bg-white appearance-none cursor-pointer"
+                className="w-full px-4 py-3 rounded-xl border border-border focus:ring-4 focus:ring-ring/10 focus:border-ring transition-all text-sm font-bold text-foreground outline-none bg-card appearance-none cursor-pointer"
             >
-                <option value="" className="text-slate-400">Seleccionar...</option>
+                <option value="" className="text-muted-foreground">Seleccionar...</option>
                 {options.map(opt => (
                     <option key={opt} value={opt}>{opt}</option>
                 ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-400">
+            </NativeSelect>
+            <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-muted-foreground">
                 <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
             </div>
         </div>
@@ -41,24 +47,25 @@ export const Select = ({ label, name, value, onChange, options, required }) => (
 
 export const Textarea = ({ label, name, value, onChange, placeholder, rows = 3 }) => (
     <div className="space-y-1.5">
-        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{label}</label>
-        <textarea
+        <Label htmlFor={`case-field-${name}`} className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">{label}</Label>
+        <TextareaControl
+            id={`case-field-${name}`}
             name={name}
             value={value || ''}
             onChange={onChange}
             placeholder={placeholder}
             rows={rows}
-            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm font-semibold text-slate-700 outline-none resize-none placeholder:text-slate-300"
+            className="w-full px-4 py-3 rounded-xl border border-border focus:ring-4 focus:ring-ring/10 focus:border-ring transition-all text-sm font-semibold text-foreground outline-none resize-none placeholder:text-muted-foreground"
         />
     </div>
 );
 
 export const SectionInfo = ({ children }) => (
-    <div className="col-span-full flex items-start gap-3 p-5 bg-indigo-50/50 border border-indigo-100/50 rounded-[20px] mb-6 shadow-sm shadow-indigo-100/20">
-        <div className="p-1.5 bg-indigo-100 rounded-lg text-indigo-600">
+    <div className="col-span-full flex items-start gap-3 p-5 bg-indigo-50/50 border border-ring/50 rounded-[20px] mb-6 shadow-sm shadow-indigo-100/20">
+        <div className="p-1.5 bg-indigo-100 rounded-lg text-link">
             <Info className="w-4 h-4 flex-shrink-0" />
         </div>
-        <p className="text-xs text-indigo-900 font-semibold leading-relaxed">{children}</p>
+        <p className="text-xs text-link font-semibold leading-relaxed">{children}</p>
     </div>
 );
 
@@ -83,8 +90,8 @@ export const SCORING_ITEMS = [
 
 export const getScoreLabel = (score) => {
     if (score === 0 || !score) return null;
-    if (score <= 14) return { label: 'ALTA VIABILIDAD — Admisión Ideal', color: 'text-emerald-600', bg: 'bg-emerald-50' };
-    if (score <= 24) return { label: 'VIABILIDAD MEDIA — Evaluar con Cautela', color: 'text-amber-600', bg: 'bg-amber-50' };
-    return { label: 'BAJA VIABILIDAD — Recomendar Rechazo', color: 'text-red-600', bg: 'bg-red-50' };
+    if (score <= 14) return { label: 'ALTA VIABILIDAD — Admisión Ideal', color: 'text-status-emerald', bg: 'bg-emerald-50' };
+    if (score <= 24) return { label: 'VIABILIDAD MEDIA — Evaluar con Cautela', color: 'text-status-amber', bg: 'bg-amber-50' };
+    return { label: 'BAJA VIABILIDAD — Recomendar Rechazo', color: 'text-status-red', bg: 'bg-red-50' };
 };
 

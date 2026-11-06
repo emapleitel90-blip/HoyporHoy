@@ -1,5 +1,4 @@
-node_modules
-node_modules
-node_modules
-node_modules
-node_modules
+node_modules/
+/client/dist/
+/client/.ui-review-build/
+/client/.legal-ui-build/

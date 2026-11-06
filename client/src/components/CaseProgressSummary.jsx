@@ -1,3 +1,4 @@
+import { Button } from './ui/button';
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
@@ -33,23 +34,23 @@ function Progress({caseId,files,refreshVersion}) {
     const received=documents.filter(item=>item.status==='RECEIVED').length;
     const commitments=docs.data?.filter(item=>item.kind==='COMMITMENT'&&item.status!=='COMPLETED').length||0;
     const blockers=docs.data?.filter(item=>item.kind==='BLOCKER'&&item.status!=='COMPLETED').length||0;
-    return <section className="bg-white rounded-xl border p-5 space-y-3" aria-label="Resumen del expediente">
+    return <section className="bg-card rounded-xl border p-5 space-y-3" aria-label="Resumen del expediente">
         <div className="flex flex-wrap justify-between gap-3"><h3 className="font-semibold">Documentación y cobranza · resumen</h3>
-            <button type="button" className="underline text-sm" disabled={docs.status==='loading'||fees.status==='loading'} onClick={()=>setReload(value=>value+1)}>Actualizar resumen</button></div>
-        <p className="text-xs text-gray-500">Se consulta al abrir, cada 30 segundos y al volver a esta ventana.</p>
+            <Button variant="legacy" size="legacy" type="button" className="underline text-sm" disabled={docs.status==='loading'||fees.status==='loading'} onClick={()=>setReload(value=>value+1)}>Actualizar resumen</Button></div>
+        <p className="text-xs text-muted-foreground">Se consulta al abrir, cada 30 segundos y al volver a esta ventana.</p>
         <div className="grid gap-4 sm:grid-cols-3">
-            <div><h4 className="font-medium">Archivos</h4><p>{files.length} {files.length===1?'archivo registrado':'archivos registrados'}</p><a href="#case-files" className="underline text-indigo-700">Ir a archivos</a><p className="text-xs text-gray-500">Un archivo cargado no equivale a un documento verificado.</p></div>
+            <div><h4 className="font-medium">Archivos</h4><p>{files.length} {files.length===1?'archivo registrado':'archivos registrados'}</p><a href="#case-files" className="underline text-link">Ir a archivos</a><p className="text-xs text-muted-foreground">Un archivo cargado no equivale a un documento verificado.</p></div>
             <div><h4 className="font-medium">Documentación y cliente</h4>
                 {docs.status==='loading'?<p role="status">Consultando seguimiento…</p>:docs.status==='error'?<p role="alert">No se pudo confirmar el seguimiento.</p>:<>
                     <p>{!documents.length?'Sin requisitos documentales registrados':!pending.length?'Todos los requisitos documentales verificados':pending.length===1?'1 requisito documental sin verificar':`${pending.length} requisitos documentales sin verificar`}</p>
                     {!!received&&<p>{received===1?'1 documento recibido para revisar':`${received} documentos recibidos para revisar`}</p>}
                     <p>{commitments} {commitments===1?'compromiso pendiente':'compromisos pendientes'} · {blockers} {blockers===1?'bloqueo pendiente':'bloqueos pendientes'}</p>
                 </>}
-                <a href="#case-follow-ups" className="underline text-indigo-700">Ir al seguimiento</a>
+                <a href="#case-follow-ups" className="underline text-link">Ir al seguimiento</a>
             </div>
             <div><h4 className="font-medium">Honorarios</h4>
                 {fees.status==='loading'?<p role="status">Consultando saldo…</p>:fees.status==='error'?<p role="alert">No se pudo confirmar el saldo.</p>:fees.data===null?<p>Sin acuerdo registrado</p>:<p>Saldo por cobrar: {new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(fees.data.balanceCents/100)}</p>}
-                <a href="#case-fees" className="underline text-indigo-700">Ir a honorarios</a>
+                <a href="#case-fees" className="underline text-link">Ir a honorarios</a>
             </div>
         </div>
     </section>;

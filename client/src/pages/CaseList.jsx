@@ -1,3 +1,10 @@
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Card } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { NativeSelect } from '../components/ui/native-select';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../components/ui/table';
 import React, { useEffect, useState, useCallback } from 'react';
 import { Plus, Search, Filter, X, UploadCloud } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -14,20 +21,20 @@ const STATUS_LABELS = {
 };
 
 const STATUS_COLORS = {
-    OPEN: 'bg-green-100 text-green-800',
-    CLOSED: 'bg-gray-100 text-gray-700',
-    IN_REVIEW: 'bg-blue-100 text-blue-800',
-    PENDING: 'bg-yellow-100 text-yellow-800',
-    REJECTED: 'bg-red-100 text-red-800',
+    OPEN: 'bg-green-100 text-status-green',
+    CLOSED: 'bg-muted text-foreground',
+    IN_REVIEW: 'bg-blue-100 text-link',
+    PENDING: 'bg-yellow-100 text-status-yellow',
+    REJECTED: 'bg-red-100 text-status-red',
 };
 
 const FUERO_OPTIONS = ['Familia', 'Laboral', 'Civil', 'Penal', 'Comercial', 'Administrativo', 'Previsional'];
 
 const ScoreBadge = ({ score }) => {
     if (score === null || score === undefined) return null;
-    if (score <= 14) return <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-green-100 text-green-800">{score}pts</span>;
-    if (score <= 24) return <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-yellow-100 text-yellow-800">{score}pts</span>;
-    return <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-red-100 text-red-800">{score}pts</span>;
+    if (score <= 14) return <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-green-100 text-status-green">{score}pts</span>;
+    if (score <= 24) return <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-yellow-100 text-status-yellow">{score}pts</span>;
+    return <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-red-100 text-status-red">{score}pts</span>;
 };
 
 const CaseList = () => {
@@ -94,17 +101,17 @@ const CaseList = () => {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Gestión de Casos</h2>
-                    <p className="text-gray-500">Administra todos los casos del estudio.</p>
+                    <h2 className="text-2xl font-bold text-foreground">Gestión de Casos</h2>
+                    <p className="text-muted-foreground">Administra todos los casos del estudio.</p>
                 </div>
                 <div className="flex gap-2">
-                    <button
+                    <Button variant="legacy" size="legacy"
                         onClick={() => setIsImportModalOpen(true)}
-                        className="inline-flex items-center justify-center px-4 py-2 border border-gray-200 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                        className="inline-flex items-center justify-center px-4 py-2 border border-border rounded-lg shadow-sm text-sm font-medium text-foreground bg-card hover:bg-background transition-colors"
                     >
-                        <UploadCloud className="-ml-1 mr-2 h-5 w-5 text-gray-400" />
+                        <UploadCloud className="-ml-1 mr-2 h-5 w-5 text-muted-foreground" />
                         Importar CSV/Excel
-                    </button>
+                    </Button>
                     <Link
                         to="/cases/new"
                         className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-light transition-colors"
@@ -116,148 +123,148 @@ const CaseList = () => {
             </div>
 
             {/* Search + Filter Bar */}
-            <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 space-y-3">
+            <Card className="bg-card rounded-xl shadow-sm p-4 border border-border space-y-3">
                 <div className="flex flex-col sm:flex-row gap-3">
                     <div className="relative flex-1">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Search className="h-5 w-5 text-gray-400" />
+                            <Search className="h-5 w-5 text-muted-foreground" />
                         </div>
-                        <input
+                        <Input
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary text-sm"
-                            placeholder="Buscar por nombre, DNI o expediente..."
+                            className="block w-full pl-10 pr-3 py-2 border border-border rounded-lg focus:ring-primary focus:border-primary text-sm"
+                            aria-label="Buscar expedientes" placeholder="Buscar por nombre, DNI o expediente..."
                         />
                     </div>
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className={`flex items-center px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${showFilters ? 'border-primary text-primary bg-primary/5' : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'}`}
+                    <Button variant="legacy" size="legacy"
+                        aria-expanded={showFilters} onClick={() => setShowFilters(!showFilters)}
+                        className={`flex items-center px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${showFilters ? 'border-primary text-link bg-primary/5' : 'border-border text-foreground bg-card hover:bg-background'}`}
                     >
                         <Filter className="mr-2 h-4 w-4" />
                         Filtros
                         {hasFilters && <span className="ml-2 w-2 h-2 bg-primary rounded-full inline-block"></span>}
-                    </button>
+                    </Button>
                     {hasFilters && (
-                        <button onClick={clearFilters} className="flex items-center px-3 py-2 text-sm text-gray-500 hover:text-red-600 transition-colors">
+                        <Button variant="legacy" size="legacy" onClick={clearFilters} className="flex items-center px-3 py-2 text-sm text-muted-foreground hover:text-status-red transition-colors">
                             <X className="h-4 w-4 mr-1" /> Limpiar
-                        </button>
+                        </Button>
                     )}
                 </div>
 
                 {showFilters && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-100">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border">
                         <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Estado</label>
-                            <select
+                            <Label className="block text-xs font-medium text-muted-foreground mb-1">Estado</Label>
+                            <NativeSelect
                                 value={filterStatus}
                                 onChange={(e) => setFilterStatus(e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-primary focus:border-primary"
+                                className="w-full border border-border rounded-lg py-2 px-3 text-sm focus:ring-primary focus:border-primary"
                             >
                                 <option value="">Todos los estados</option>
                                 {Object.entries(STATUS_LABELS).map(([val, label]) => (
                                     <option key={val} value={val}>{label}</option>
                                 ))}
-                            </select>
+                            </NativeSelect>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Fuero</label>
-                            <select
+                            <Label className="block text-xs font-medium text-muted-foreground mb-1">Fuero</Label>
+                            <NativeSelect
                                 value={filterFuero}
                                 onChange={(e) => setFilterFuero(e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-primary focus:border-primary"
+                                className="w-full border border-border rounded-lg py-2 px-3 text-sm focus:ring-primary focus:border-primary"
                             >
                                 <option value="">Todos los fueros</option>
                                 {FUERO_OPTIONS.map(f => (
                                     <option key={f} value={f}>{f}</option>
                                 ))}
-                            </select>
+                            </NativeSelect>
                         </div>
                     </div>
                 )}
-            </div>
+            </Card>
 
             {/* Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <Card className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Consultante</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fuero</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                                <th className="relative px-6 py-3"><span className="sr-only">Acciones</span></th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                    <Table className="min-w-full divide-y divide-border">
+                        <TableHeader className="bg-background">
+                            <TableRow>
+                                <TableHead className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Consultante</TableHead>
+                                <TableHead className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Fuero</TableHead>
+                                <TableHead className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Estado</TableHead>
+                                <TableHead className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Score</TableHead>
+                                <TableHead className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha</TableHead>
+                                <TableHead className="relative px-6 py-3"><span className="sr-only">Acciones</span></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody className="bg-card divide-y divide-border">
                             {loading ? (
-                                <tr>
-                                    <td colSpan="6" className="px-6 py-12 text-center text-gray-400">
+                                <TableRow>
+                                    <TableCell colSpan="6" className="px-6 py-12 text-center text-muted-foreground">
                                         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                                         Cargando casos...
-                                    </td>
-                                </tr>
+                                    </TableCell>
+                                </TableRow>
                             ) : error ? (
-                                <tr>
-                                    <td colSpan="6" className="px-6 py-8 text-center text-red-500">{error}</td>
-                                </tr>
+                                <TableRow>
+                                    <TableCell colSpan="6" className="px-6 py-8 text-center text-status-red">{error}</TableCell>
+                                </TableRow>
                             ) : cases.length === 0 ? (
-                                <tr>
-                                    <td colSpan="6" className="px-6 py-12 text-center text-gray-400">
+                                <TableRow>
+                                    <TableCell colSpan="6" className="px-6 py-12 text-center text-muted-foreground">
                                         <p className="font-medium">No se encontraron casos.</p>
-                                        {hasFilters && <p className="text-sm mt-1">Intentá con otros filtros o <button onClick={clearFilters} className="text-primary hover:underline">limpiar búsqueda</button>.</p>}
-                                        {!hasFilters && <Link to="/cases/new" className="inline-block mt-2 text-primary hover:underline text-sm font-medium">Crear el primer caso →</Link>}
-                                    </td>
-                                </tr>
+                                        {hasFilters && <p className="text-sm mt-1">Intentá con otros filtros o <Button variant="legacy" size="legacy" onClick={clearFilters} className="text-link hover:underline">limpiar búsqueda</Button>.</p>}
+                                        {!hasFilters && <Link to="/cases/new" className="inline-block mt-2 text-link hover:underline text-sm font-medium">Crear el primer caso →</Link>}
+                                    </TableCell>
+                                </TableRow>
                             ) : cases.map((item) => (
-                                <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                <TableRow key={item.id} className="hover:bg-background transition-colors">
+                                    <TableCell className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
-                                            <div className="flex-shrink-0 h-9 w-9 bg-slate-200 rounded-full flex items-center justify-center font-bold text-slate-600 text-sm">
+                                            <div className="flex-shrink-0 h-9 w-9 bg-secondary rounded-full flex items-center justify-center font-bold text-secondary-foreground text-sm">
                                                 {item.clientName ? item.clientName.charAt(0).toUpperCase() : 'C'}
                                             </div>
                                             <div className="ml-3">
-                                                <div className="text-sm font-semibold text-gray-900">{item.clientName || 'Sin Nombre'}</div>
-                                                <div className="text-xs text-gray-400">{item.caseNumber}</div>
+                                                <div className="text-sm font-semibold text-foreground">{item.clientName || 'Sin Nombre'}</div>
+                                                <div className="text-xs text-muted-foreground">{item.caseNumber}</div>
                                             </div>
                                         </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    </TableCell>
+                                    <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-secondary-foreground">
                                         {item.fuero || '—'}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${STATUS_COLORS[item.status] || 'bg-gray-100 text-gray-700'}`}>
+                                    </TableCell>
+                                    <TableCell className="px-6 py-4 whitespace-nowrap">
+                                        <Badge variant="outline" className={`px-2 py-1 text-xs leading-5 font-semibold rounded-md border-transparent ${STATUS_COLORS[item.status] || 'bg-muted text-foreground'}`}>
                                             {STATUS_LABELS[item.status] || item.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="px-6 py-4 whitespace-nowrap">
                                         <ScoreBadge score={item.score} />
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    </TableCell>
+                                    <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                                         {new Date(item.createdAt).toLocaleDateString('es-AR')}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                                        <Link to={`/cases/${item.id}`} className="text-primary hover:text-primary-light font-medium">Ver</Link>
-                                        <Link to={`/cases/${item.id}/edit`} className="text-indigo-600 hover:text-indigo-900">Editar</Link>
-                                    </td>
-                                </tr>
+                                    </TableCell>
+                                    <TableCell className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                                        <Link to={`/cases/${item.id}`} className="text-link hover:text-primary-light font-medium">Ver</Link>
+                                        <Link to={`/cases/${item.id}/edit`} className="text-link hover:text-link">Editar</Link>
+                                    </TableCell>
+                                </TableRow>
                             ))}
-                        </tbody>
-                    </table>
+                        </TableBody>
+                    </Table>
                 </div>
                 {!loading && cases.length > 0 && (
-                    <div className="px-6 py-3 border-t border-gray-100 text-xs text-gray-400">
+                    <div className="px-6 py-3 border-t border-border text-xs text-muted-foreground">
                         {cases.length} caso{cases.length !== 1 ? 's' : ''} encontrado{cases.length !== 1 ? 's' : ''}
                     </div>
                 )}
-            </div>
-            
-            <DataImportModal 
-                isOpen={isImportModalOpen} 
-                onClose={() => setIsImportModalOpen(false)} 
-                onImportSuccess={fetchCases} 
+            </Card>
+
+            <DataImportModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onImportSuccess={fetchCases}
             />
         </div>
     );

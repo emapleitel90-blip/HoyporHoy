@@ -1,3 +1,7 @@
+import { Button } from './ui/button';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { Input } from './ui/input';
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
@@ -121,75 +125,75 @@ function Fees({ caseId, inbox, onReceiptSaved, onChanged }) {
         : currentReceiptPayment?.reversal ? 'El pago está anulado. Sus comprobantes se conservan para consulta.'
             : receiptEditing && !currentReceiptPayment ? 'El pago ya no está disponible. Actualizá los honorarios.' : '';
 
-    return <section id={inbox?undefined:'case-fees'} className="bg-white border rounded-xl p-6 my-6 space-y-4 scroll-mt-24">
+    return <section id={inbox?undefined:'case-fees'} className="bg-card border rounded-xl p-6 my-6 space-y-4 scroll-mt-24">
         <div className="flex flex-wrap gap-3 justify-between"><h2 className="font-semibold">{inbox ? 'Honorarios por cobrar · próximos 7 días y atrasados' : 'Honorarios y cobranzas'}</h2>
-            <button disabled={busy} onClick={() => setReload(value => value + 1)} className="underline">Actualizar honorarios</button></div>
-        <p className="text-sm text-gray-600">Importes en pesos argentinos. Los honorarios del cliente se registran separados de los gastos del expediente.</p>
+            <Button variant="legacy" size="legacy" disabled={busy} onClick={() => setReload(value => value + 1)} className="underline">Actualizar honorarios</Button></div>
+        <p className="text-sm text-secondary-foreground">Importes en pesos argentinos. Los honorarios del cliente se registran separados de los gastos del expediente.</p>
         {loading ? <p role="status">Cargando honorarios…</p> : error ? <p role="alert">{error}</p> : inbox ? <>
             {!data?.length && <p>Sin cuotas pendientes en este período.</p>}
             {data?.map(item => <article key={item.id} className="border rounded-lg p-3 space-y-2">
-                <Link className="text-indigo-700 underline" to={'/cases/' + item.case.id}>{item.case.clientName || item.case.caseNumber}</Link>
+                <Link className="text-link underline" to={'/cases/' + item.case.id}>{item.case.clientName || item.case.caseNumber}</Link>
                 <p>Cuota {item.position} · {day(item.dueDate)} · Pendiente {currency(item.balanceCents)}</p>
-                <button className="underline" onClick={() => reminder(item)}>Copiar recordatorio de cuota {item.position}</button>
+                <Button variant="legacy" size="legacy" className="underline" onClick={() => reminder(item)}>Copiar recordatorio de cuota {item.position}</Button>
             </article>)}
         </> : data ? <>
             <p className="whitespace-pre-wrap">{data.description}</p>
             <p>Total acordado: {currency(data.totalCents)} · Pagado: {currency(data.paidCents)} · Saldo: {currency(data.balanceCents)}</p>
-            {canWrite && <button disabled={busy || !!editingAgreement} className="underline" onClick={() => {
+            {canWrite && <Button variant="legacy" size="legacy" disabled={busy || !!editingAgreement} className="underline" onClick={() => {
                 setReceiptEditing(null); setEditingAgreement(data); setSelected(null); setReversing(null); setSaveError(''); setNotice('');
-            }}>Modificar acuerdo</button>}
+            }}>Modificar acuerdo</Button>}
             {data.installments.map(item => <article key={item.id} className="border rounded-lg p-4 space-y-2">
                 <h3>Cuota {item.position} · {day(item.dueDate)}</h3>
                 <p>Importe {currency(item.amountCents)} · Pendiente {currency(item.balanceCents)} · {item.status === 'PAID' ? 'Pagada' : item.status === 'PARTIAL' ? 'Pago parcial' : 'Pendiente'}</p>
                 {item.payments.map((entry, index) => <div key={entry.id} className="text-sm border-l-2 pl-3 space-y-1">
                     <p>Pago {currency(entry.amountCents)} · {day(entry.paidAt)} · {entry.notes || 'Sin observaciones'}</p>
                     {entry.reversal ? <>
-                        <p className="font-medium text-amber-800">Anulado · {moment(entry.reversal.createdAt)} · {entry.reversal.registeredByName || entry.reversal.registeredById}</p>
+                        <p className="font-medium text-status-amber">Anulado · {moment(entry.reversal.createdAt)} · {entry.reversal.registeredByName || entry.reversal.registeredById}</p>
                         <p className="whitespace-pre-wrap">Motivo: {entry.reversal.reason}</p>
-                    </> : canWrite && <button disabled={busy} className="underline text-red-700" onClick={() => {
+                    </> : canWrite && <Button variant="legacy" size="legacy" disabled={busy} className="underline text-status-red" onClick={() => {
                         setReceiptEditing(null); setEditingAgreement(null); setSelected(null); setReversing({ id: entry.id, amountCents: entry.amountCents, position: item.position });
                         setReason(''); reversalRequestId.current = null; setSaveError(''); setNotice('');
-                    }}>Anular pago {index + 1} de cuota {item.position}</button>}
+                    }}>Anular pago {index + 1} de cuota {item.position}</Button>}
                     <FeePaymentReceipts payment={entry} label={'pago ' + (index + 1) + ' de cuota ' + item.position}
                         canWrite={canWrite} busy={busy} editing={receiptEditing?.payment.id === entry.id}
                         onEdit={() => { setReceiptEditing({ payment: entry, label: 'pago ' + (index + 1) + ' de cuota ' + item.position, version: data.version });
                             setSelected(null); setReversing(null); setEditingAgreement(null); setSaveError(''); setNotice(''); }} />
                 </div>)}
                 {item.balanceCents > 0 && <div className="flex flex-wrap gap-4">
-                    <button disabled={busy} className="underline" onClick={() => reminder(item)}>Copiar recordatorio de cuota {item.position}</button>
-                    {canWrite && <button disabled={busy} className="underline" onClick={() => { setReceiptEditing(null); setEditingAgreement(null); setReversing(null); setSelected(item.id); requestId.current = null; setPayment({ amount: '', paidAt: today(), notes: '' }); setSaveError(''); setNotice(''); }}>Registrar pago de cuota {item.position}</button>}
+                    <Button variant="legacy" size="legacy" disabled={busy} className="underline" onClick={() => reminder(item)}>Copiar recordatorio de cuota {item.position}</Button>
+                    {canWrite && <Button variant="legacy" size="legacy" disabled={busy} className="underline" onClick={() => { setReceiptEditing(null); setEditingAgreement(null); setReversing(null); setSelected(item.id); requestId.current = null; setPayment({ amount: '', paidAt: today(), notes: '' }); setSaveError(''); setNotice(''); }}>Registrar pago de cuota {item.position}</Button>}
                 </div>}
             </article>)}
             {reversing && <form onSubmit={reverse} className="border border-amber-200 rounded-lg p-4 grid gap-3">
                 <h3>Anular pago de {currency(reversing.amountCents)} de cuota {reversing.position}</h3>
                 <p>La anulación vuelve a aumentar el saldo pendiente en {currency(reversing.amountCents)}. El pago original y el motivo se conservan en el historial. Después podés registrar el importe correcto como un nuevo pago.</p>
-                <label>Motivo de anulación<textarea className="block border rounded p-2 w-full" required maxLength={2000} disabled={busy} value={reason}
-                    onChange={event => { reversalRequestId.current = null; setReason(event.target.value); }} /></label>
-                <button disabled={busy} className="bg-red-700 text-white rounded p-2">{busy ? 'Anulando…' : 'Confirmar anulación'}</button>
-                <button type="button" disabled={busy} onClick={() => { setReversing(null); setSaveError(''); }}>Cancelar anulación</button>
+                <Label>Motivo de anulación<Textarea className="block border rounded p-2 w-full" required maxLength={2000} disabled={busy} value={reason}
+                    onChange={event => { reversalRequestId.current = null; setReason(event.target.value); }} /></Label>
+                <Button variant="legacy" size="legacy" disabled={busy} className="bg-red-700 text-white rounded p-2">{busy ? 'Anulando…' : 'Confirmar anulación'}</Button>
+                <Button variant="legacy" size="legacy" type="button" disabled={busy} onClick={() => { setReversing(null); setSaveError(''); }}>Cancelar anulación</Button>
             </form>}
             {selected && <form onSubmit={pay} className="border rounded-lg p-4 grid gap-3">
                 <h3>Registrar pago recibido</h3>
-                {[['amount', 'Importe del pago', 'number'], ['paidAt', 'Fecha del pago', 'date'], ['notes', 'Observaciones del pago', 'text']].map(([field, label, type]) => <label key={field}>{label}
-                    <input className="block border rounded p-2 w-full" type={type} step={field === 'amount' ? '0.01' : undefined} min={field === 'amount' ? '0.01' : undefined}
+                {[['amount', 'Importe del pago', 'number'], ['paidAt', 'Fecha del pago', 'date'], ['notes', 'Observaciones del pago', 'text']].map(([field, label, type]) => <Label key={field}>{label}
+                    <Input className="block border rounded p-2 w-full" type={type} step={field === 'amount' ? '0.01' : undefined} min={field === 'amount' ? '0.01' : undefined}
                         maxLength={2000} required={field !== 'notes'} disabled={busy} value={payment[field]} onChange={event => { requestId.current = null; setPayment({ ...payment, [field]: event.target.value }); }} />
-                </label>)}
-                <button disabled={busy} className="bg-indigo-600 text-white rounded p-2">{busy ? 'Registrando…' : 'Confirmar pago'}</button>
-                <button type="button" disabled={busy} onClick={() => setSelected(null)}>Cancelar pago</button>
+                </Label>)}
+                <Button variant="legacy" size="legacy" disabled={busy} className="bg-indigo-600 text-white rounded p-2">{busy ? 'Registrando…' : 'Confirmar pago'}</Button>
+                <Button variant="legacy" size="legacy" type="button" disabled={busy} onClick={() => setSelected(null)}>Cancelar pago</Button>
             </form>}
             <FeeAgreementHistory amendments={data.amendments} />
         </> : canWrite ? <form onSubmit={create} className="grid gap-3">
             <p>Registrá el acuerdo y sus cuotas tal como fueron pactados. Máximo 60 cuotas y $20.000.000 por cuota.</p>
-            <label>Descripción del acuerdo<textarea className="block border rounded p-2 w-full" required maxLength={2000} disabled={busy} value={description} onChange={event => setDescription(event.target.value)} /></label>
+            <Label>Descripción del acuerdo<Textarea className="block border rounded p-2 w-full" required maxLength={2000} disabled={busy} value={description} onChange={event => setDescription(event.target.value)} /></Label>
             {quotas.map((item, index) => <div key={index} className="flex flex-wrap gap-3 border p-3 rounded">
-                <label>Importe de cuota {index + 1}<input className="block border rounded p-2" type="number" min="0.01" max="20000000" step="0.01" required disabled={busy} value={item.amount}
-                    onChange={event => setQuotas(quotas.map((row, i) => i === index ? { ...row, amount: event.target.value } : row))} /></label>
-                <label>Vencimiento de cuota {index + 1}<input className="block border rounded p-2" type="date" required disabled={busy} value={item.dueDate}
-                    onChange={event => setQuotas(quotas.map((row, i) => i === index ? { ...row, dueDate: event.target.value } : row))} /></label>
-                {quotas.length > 1 && <button type="button" disabled={busy} onClick={() => setQuotas(quotas.filter((_, i) => i !== index))}>Quitar cuota {index + 1}</button>}
+                <Label>Importe de cuota {index + 1}<Input className="block border rounded p-2" type="number" min="0.01" max="20000000" step="0.01" required disabled={busy} value={item.amount}
+                    onChange={event => setQuotas(quotas.map((row, i) => i === index ? { ...row, amount: event.target.value } : row))} /></Label>
+                <Label>Vencimiento de cuota {index + 1}<Input className="block border rounded p-2" type="date" required disabled={busy} value={item.dueDate}
+                    onChange={event => setQuotas(quotas.map((row, i) => i === index ? { ...row, dueDate: event.target.value } : row))} /></Label>
+                {quotas.length > 1 && <Button variant="legacy" size="legacy" type="button" disabled={busy} onClick={() => setQuotas(quotas.filter((_, i) => i !== index))}>Quitar cuota {index + 1}</Button>}
             </div>)}
-            <button type="button" disabled={busy || quotas.length >= 60} onClick={() => setQuotas([...quotas, blankQuota()])}>Agregar cuota</button>
-            <button disabled={busy} className="bg-indigo-600 text-white rounded p-2">{busy ? 'Guardando…' : 'Guardar acuerdo'}</button>
+            <Button variant="legacy" size="legacy" type="button" disabled={busy || quotas.length >= 60} onClick={() => setQuotas([...quotas, blankQuota()])}>Agregar cuota</Button>
+            <Button variant="legacy" size="legacy" disabled={busy} className="bg-indigo-600 text-white rounded p-2">{busy ? 'Guardando…' : 'Guardar acuerdo'}</Button>
         </form> : <p>Aún no hay acuerdo de honorarios registrado. Puede registrarlo un abogado o administrador.</p>}
         {receiptEditing && <FeePaymentReceiptEditor key={receiptEditing.payment.id} payment={receiptEditing.payment} label={receiptEditing.label}
             caseId={caseId} agreementVersion={receiptEditing.version} busy={busy} onBusyChange={changeBusy} blockedReason={receiptBlock}
@@ -198,7 +202,7 @@ function Fees({ caseId, inbox, onReceiptSaved, onChanged }) {
         {editingAgreement && <FeeAgreementEditor agreement={editingAgreement} busy={busy} onBusyChange={changeBusy}
             onSaved={result => { setData(result); notifyActivityChanged(); onChanged?.(); setEditingAgreement(null); setNotice('Acuerdo modificado. Saldo y recordatorios actualizados.'); }}
             onCancel={() => setEditingAgreement(null)} onDiscardAndReload={() => { setEditingAgreement(null); setReload(value => value + 1); }} />}
-        {saveError && <p role="alert" className="text-red-700">{saveError}</p>}
-        {notice && <p role="status" className="text-green-700">{notice}</p>}
+        {saveError && <p role="alert" className="text-status-red">{saveError}</p>}
+        {notice && <p role="status" className="text-status-green">{notice}</p>}
     </section>;
 }

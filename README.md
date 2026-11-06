@@ -87,6 +87,12 @@ SheetJS se instala desde la URL oficial de la versión 0.20.3, registrada en `cl
 
 ## Funcionalidades Principales
 
+La interfaz utiliza componentes locales de shadcn/ui (estilo New York, compatibles con Tailwind 3) en `client/src/components/ui`. Los colores semánticos se definen en `client/src/index.css` y se conectan con Tailwind desde `client/tailwind.config.js`. Se conserva la navegación y distribución de las pantallas.
+
+El selector de apariencia del login y de la barra superior permite elegir Claro, Oscuro o Sistema. La preferencia se guarda localmente con la clave `lyp-theme`, se sincroniza entre pestañas y es independiente de la sesión. Las tipografías se incluyen en la compilación; no requieren servicios externos.
+
+La configuración para incorporar más componentes se encuentra en `client/components.json`. Los controles existentes conservan sus eventos, referencias y validaciones nativas; los selectores mantienen la semántica de HTML para preservar los formularios.
+
 - **Dashboard**: Visualización de KPIs y gráficos.
 - **Gestión de Casos**: Formulario de 13 secciones con Scoring automático.
 - **Autenticación**: Roles definidos (Admin, Abogado, Operador).

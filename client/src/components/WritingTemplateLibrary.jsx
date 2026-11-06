@@ -1,3 +1,7 @@
+import { Button } from './ui/button';
+import { Label } from './ui/label';
+import { Input } from './ui/input';
+import { Textarea } from './ui/textarea';
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
@@ -53,43 +57,43 @@ function TemplateLibrary({caseId,canManage,disabled,onUse,sourceVersion}) {
     const text=selected?.content.replace(/\{\{([A-Za-z_][A-Za-z_0-9]*)\}\}/g,(_,key)=>fieldValue(values,key))||'';
     const visibleItems=items.filter(item=>[item.title,item.jurisdiction,item.fuero,item.kind].join(' ').toLowerCase().includes(filter.trim().toLowerCase()));
     return <div className="border rounded p-3 space-y-3">
-        <button type="button" className="underline" disabled={busy} onClick={()=>setOpen(value=>!value)}>{open?'Cerrar biblioteca de modelos':'Biblioteca de modelos del estudio'}</button>
-        {canManage&&sourceVersion&&<button type="button" className="block underline" disabled={disabled||busy} onClick={()=>{
+        <Button variant="legacy" size="legacy" type="button" className="underline" disabled={busy} onClick={()=>setOpen(value=>!value)}>{open?'Cerrar biblioteca de modelos':'Biblioteca de modelos del estudio'}</Button>
+        {canManage&&sourceVersion&&<Button variant="legacy" size="legacy" type="button" className="block underline" disabled={disabled||busy} onClick={()=>{
             setOpen(true);copyModel({title:sourceVersion.title,content:sourceVersion.content});
-        }}>Crear modelo desde versión {sourceVersion.number} guardada</button>}
+        }}>Crear modelo desde versión {sourceVersion.number} guardada</Button>}
         {open&&<><p>Los modelos son textos de trabajo del estudio. Revisá su contenido y adecuación antes de guardar un escrito. Cada modelo guardado se conserva; para corregirlo, incorporá una copia nueva.</p>
-            <label>Filtrar modelos<input className="block w-full border p-2" value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Título, jurisdicción, fuero o tipo"/></label>
+            <Label>Filtrar modelos<Input className="block w-full border p-2" value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Título, jurisdicción, fuero o tipo"/></Label>
             {loading&&<p role="status">Cargando modelos…</p>}
-            {loadError&&<div role="alert"><p>{loadError}</p><button type="button" className="underline" disabled={busy||loading} onClick={()=>setRetry(value=>value+1)}>Reintentar carga de modelos</button></div>}
+            {loadError&&<div role="alert"><p>{loadError}</p><Button variant="legacy" size="legacy" type="button" className="underline" disabled={busy||loading} onClick={()=>setRetry(value=>value+1)}>Reintentar carga de modelos</Button></div>}
             {loaded&&!loading&&!loadError&&!items.length&&<p>No hay modelos guardados.</p>}
             {!!items.length&&!visibleItems.length&&<p>No hay modelos que coincidan con el filtro.</p>}
             {visibleItems.map(item=><article key={item.id} className="border rounded p-3">
                 <h3 className="font-semibold">{item.title}</h3><p>{item.jurisdiction} · {item.fuero} · {item.kind}</p><p>Autor: {item.createdByName}</p>
-                <button type="button" className="underline" disabled={disabled||busy} onClick={()=>{setSelected(item);setValues({});}}>Preparar escrito desde {item.title}</button>
-                {canManage&&<button type="button" className="block underline mt-2" disabled={disabled||busy} onClick={()=>copyModel(item)}>Copiar para corregir: {item.title}</button>}
+                <Button variant="legacy" size="legacy" type="button" className="underline" disabled={disabled||busy} onClick={()=>{setSelected(item);setValues({});}}>Preparar escrito desde {item.title}</Button>
+                {canManage&&<Button variant="legacy" size="legacy" type="button" className="block underline mt-2" disabled={disabled||busy} onClick={()=>copyModel(item)}>Copiar para corregir: {item.title}</Button>}
             </article>)}
             {selected&&<div className="border rounded p-3 space-y-2"><h3>Preparar modelo: {selected.title}</h3>
-                {fields.map(field=><label key={field} className="block">Valor para {field}<input className="block border p-2 w-full" maxLength={2000} value={fieldValue(values,field)} onChange={e=>setValues(current=>({...current,[field]:e.target.value}))}/></label>)}
+                {fields.map(field=><Label key={field} className="block">Valor para {field}<Input className="block border p-2 w-full" maxLength={2000} value={fieldValue(values,field)} onChange={e=>setValues(current=>({...current,[field]:e.target.value}))}/></Label>)}
                 <pre className="whitespace-pre-wrap break-words font-serif">{text}</pre>
-                <button type="button" disabled={disabled||busy||fields.some(field=>!fieldValue(values,field).trim())||text.length>20000} className="underline" onClick={()=>onUse({title:selected.title,content:text})}>Abrir como nuevo escrito</button>
+                <Button variant="legacy" size="legacy" type="button" disabled={disabled||busy||fields.some(field=>!fieldValue(values,field).trim())||text.length>20000} className="underline" onClick={()=>onUse({title:selected.title,content:text})}>Abrir como nuevo escrito</Button>
                 {text.length>20000&&<p role="alert">El texto completado supera los 20.000 caracteres. Acortá los valores.</p>}
             </div>}
             {canManage&&<form onSubmit={save} className="grid gap-2 border rounded p-3"><h3 className="font-semibold">Incorporar modelo</h3>
                 <p>Podés escribir campos como {'{{cliente}}'} o {'{{objeto}}'}; al usar el modelo se pedirán sus valores.</p>
                 <p>Una copia se guarda como un modelo nuevo. Cambiá el título para distinguirla del original.</p>
                 <p>El modelo estará disponible en la biblioteca del estudio. Reemplazá los datos particulares del expediente por campos como {'{{cliente}}'} antes de guardarlo.</p>
-                {Object.entries({title:'Título del modelo',jurisdiction:'Jurisdicción del modelo',fuero:'Fuero del modelo',kind:'Tipo de escrito del modelo',content:'Texto del modelo'}).map(([key,label])=><label key={key}>{label}{key==='content'?<textarea required rows={8} maxLength={20000} className="block w-full border p-2" value={draft[key]} disabled={busy||disabled} onChange={e=>{requestId.current=null;setDraft(current=>({...current,[key]:e.target.value}));}}/>:<input ref={key==='title'?titleInput:null} required maxLength={key==='title'?200:120} className="block w-full border p-2" value={draft[key]} disabled={busy||disabled} onChange={e=>{requestId.current=null;setDraft(current=>({...current,[key]:e.target.value}));}}/>}</label>)}
-                <button disabled={busy||disabled||loading}>{busy?'Guardando modelo…':'Guardar modelo en biblioteca'}</button>
-                {hasDraft&&!confirmDiscard&&<button type="button" disabled={busy||disabled} onClick={()=>setConfirmDiscard(true)}>Descartar borrador del modelo</button>}
+                {Object.entries({title:'Título del modelo',jurisdiction:'Jurisdicción del modelo',fuero:'Fuero del modelo',kind:'Tipo de escrito del modelo',content:'Texto del modelo'}).map(([key,label])=><Label key={key}>{label}{key==='content'?<Textarea required rows={8} maxLength={20000} className="block w-full border p-2" value={draft[key]} disabled={busy||disabled} onChange={e=>{requestId.current=null;setDraft(current=>({...current,[key]:e.target.value}));}}/>:<Input ref={key==='title'?titleInput:null} required maxLength={key==='title'?200:120} className="block w-full border p-2" value={draft[key]} disabled={busy||disabled} onChange={e=>{requestId.current=null;setDraft(current=>({...current,[key]:e.target.value}));}}/>}</Label>)}
+                <Button variant="legacy" size="legacy" disabled={busy||disabled||loading}>{busy?'Guardando modelo…':'Guardar modelo en biblioteca'}</Button>
+                {hasDraft&&!confirmDiscard&&<Button variant="legacy" size="legacy" type="button" disabled={busy||disabled} onClick={()=>setConfirmDiscard(true)}>Descartar borrador del modelo</Button>}
                 {hasDraft&&confirmDiscard&&<div className="border rounded p-3 space-y-2" role="group" aria-label="Confirmar descarte del borrador">
                     <p>Se perderán los cambios sin guardar de este modelo. Los modelos guardados se conservan.</p>
-                    <button type="button" className="block underline" disabled={busy||disabled} onClick={()=>setConfirmDiscard(false)}>Seguir editando el modelo</button>
-                    <button type="button" className="block underline text-red-700" disabled={busy||disabled} onClick={()=>{
+                    <Button variant="legacy" size="legacy" type="button" className="block underline" disabled={busy||disabled} onClick={()=>setConfirmDiscard(false)}>Seguir editando el modelo</Button>
+                    <Button variant="legacy" size="legacy" type="button" className="block underline text-status-red" disabled={busy||disabled} onClick={()=>{
                         setDraft(blank);setConfirmDiscard(false);requestId.current=null;setError('');
-                    }}>Confirmar descarte del modelo</button>
+                    }}>Confirmar descarte del modelo</Button>
                 </div>}
             </form>}
-            {error&&<p role="alert" className="text-red-700">{error}</p>}
+            {error&&<p role="alert" className="text-status-red">{error}</p>}
         </>}
     </div>;
 }

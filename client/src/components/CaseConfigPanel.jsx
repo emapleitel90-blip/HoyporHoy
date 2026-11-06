@@ -1,7 +1,11 @@
+import { Button } from './ui/button';
+import { Label } from './ui/label';
+import { Input } from './ui/input';
+import { NativeSelect } from './ui/native-select';
 import React, { useState } from 'react';
 import { useCaseConfig } from '../context/CaseConfigContext';
-import { 
-  Settings, Plus, Trash2, Edit2, Check, X, 
+import {
+  Settings, Plus, Trash2, Edit2, Check, X,
   Scale, Briefcase, Gavel, Users, FileText, ChevronRight
 } from 'lucide-react';
 
@@ -30,7 +34,7 @@ const COLOR_OPTIONS = [
 export const CaseConfigPanel = () => {
   const { config, addCategoryItem, updateCategoryItem, deleteCategoryItem } = useCaseConfig();
   const [activeTab, setActiveTab] = useState('fueros');
-  
+
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [isAdding, setIsAdding] = useState(false);
@@ -68,25 +72,25 @@ export const CaseConfigPanel = () => {
   const currentItems = config[activeTab] || [];
 
   return (
-    <div className="bg-slate-900 rounded-xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col h-full text-slate-200">
-      <div className="p-6 border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm flex justify-between items-center">
+    <div className="bg-card rounded-xl border border-border shadow-2xl overflow-hidden flex flex-col h-full text-muted-foreground">
+      <div className="p-6 border-b border-border bg-card backdrop-blur-sm flex justify-between items-center">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400">
             <Settings size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white tracking-tight">Configuración de Casos</h2>
-            <p className="text-sm text-slate-400 mt-1">Administra los parámetros globales del sistema jurídico</p>
+            <h2 className="text-xl font-bold text-foreground tracking-tight">Configuración de Casos</h2>
+            <p className="text-sm text-muted-foreground mt-1">Administra los parámetros globales del sistema jurídico</p>
           </div>
         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Tabs */}
-        <div className="w-64 border-r border-slate-800 p-4 bg-slate-900/30 overflow-y-auto">
+        <div className="w-64 border-r border-border p-4 bg-card overflow-y-auto">
           <div className="space-y-1">
             {TABS.map(tab => (
-              <button
+              <Button variant="legacy" size="legacy"
                 key={tab.id}
                 onClick={() => {
                   setActiveTab(tab.id);
@@ -94,25 +98,25 @@ export const CaseConfigPanel = () => {
                   setIsAdding(false);
                 }}
                 className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-between ${
-                  activeTab === tab.id 
-                    ? 'bg-indigo-600/10 text-indigo-400' 
-                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                  activeTab === tab.id
+                    ? 'bg-indigo-600/10 text-indigo-400'
+                    : 'text-muted-foreground hover:bg-card hover:text-muted-foreground'
                 }`}
               >
                 {tab.label}
                 {activeTab === tab.id && <ChevronRight size={16} className="text-indigo-400" />}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 p-6 overflow-y-auto bg-slate-900/50">
+        <div className="flex-1 p-6 overflow-y-auto bg-card">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-lg font-semibold text-foreground">
               {TABS.find(t => t.id === activeTab)?.label}
             </h3>
-            <button
+            <Button variant="legacy" size="legacy"
               onClick={() => {
                 setIsAdding(true);
                 setEditingId(null);
@@ -122,17 +126,17 @@ export const CaseConfigPanel = () => {
             >
               <Plus size={16} />
               Añadir Nuevo
-            </button>
+            </Button>
           </div>
 
           <div className="space-y-3">
             {isAdding && (
-              <div className="bg-slate-800 rounded-lg p-4 border border-indigo-500/50 shadow-lg mb-4 animate-in fade-in slide-in-from-top-4">
-                <ItemForm 
-                  form={editForm} 
-                  setForm={setEditForm} 
-                  onSave={handleSaveEdit} 
-                  onCancel={() => setIsAdding(false)} 
+              <div className="bg-card rounded-lg p-4 border border-ring/50 shadow-lg mb-4 animate-in fade-in slide-in-from-top-4">
+                <ItemForm
+                  form={editForm}
+                  setForm={setEditForm}
+                  onSave={handleSaveEdit}
+                  onCancel={() => setIsAdding(false)}
                   activeTab={activeTab}
                   config={config}
                 />
@@ -140,18 +144,18 @@ export const CaseConfigPanel = () => {
             )}
 
             {currentItems.map(item => (
-              <div 
-                key={item.id} 
-                className={`bg-slate-800/50 rounded-lg p-4 border border-slate-700/50 transition-all duration-200 ${
-                  editingId === item.id ? 'ring-1 ring-indigo-500 bg-slate-800' : 'hover:border-slate-600'
+              <div
+                key={item.id}
+                className={`bg-card rounded-lg p-4 border border-border/50 transition-all duration-200 ${
+                  editingId === item.id ? 'ring-1 ring-ring bg-card' : 'hover:border-border'
                 }`}
               >
                 {editingId === item.id ? (
-                  <ItemForm 
-                    form={editForm} 
-                    setForm={setEditForm} 
-                    onSave={handleSaveEdit} 
-                    onCancel={() => setEditingId(null)} 
+                  <ItemForm
+                    form={editForm}
+                    setForm={setEditForm}
+                    onSave={handleSaveEdit}
+                    onCancel={() => setEditingId(null)}
                     activeTab={activeTab}
                     config={config}
                   />
@@ -159,45 +163,45 @@ export const CaseConfigPanel = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       {item.color && (
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white ${item.color} shadow-lg`}>
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-foreground ${item.color} shadow-lg`}>
                           {ICON_MAP[item.icon] || <FileText size={18} />}
                         </div>
                       )}
                       <div>
-                        <h4 className="font-medium text-slate-200">{item.name}</h4>
+                        <h4 className="font-medium text-muted-foreground">{item.name}</h4>
                         {activeTab === 'tiposJuicio' && item.fueroId && (
-                          <span className="text-xs text-slate-500 bg-slate-900/50 px-2 py-1 rounded-md mt-1 inline-block">
+                          <span className="text-xs text-muted-foreground bg-card px-2 py-1 rounded-md mt-1 inline-block">
                             Fuero: {config.fueros.find(f => f.id === item.fueroId)?.name || 'Desconocido'}
                           </span>
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       {deleteConfirmId === item.id ? (
                         <div className="flex items-center gap-2 bg-red-500/10 text-red-400 px-3 py-1 rounded-lg border border-red-500/20">
                           <span className="text-xs font-medium mr-2">¿Seguro?</span>
-                          <button onClick={() => handleDelete(item.id)} className="hover:text-red-300">
+                          <Button variant="legacy" size="legacy" onClick={() => handleDelete(item.id)} className="hover:text-red-300">
                             <Check size={16} />
-                          </button>
-                          <button onClick={() => setDeleteConfirmId(null)} className="hover:text-slate-300 text-slate-400">
+                          </Button>
+                          <Button variant="legacy" size="legacy" onClick={() => setDeleteConfirmId(null)} className="hover:text-muted-foreground text-muted-foreground">
                             <X size={16} />
-                          </button>
+                          </Button>
                         </div>
                       ) : (
                         <>
-                          <button 
+                          <Button variant="legacy" size="legacy"
                             onClick={() => handleEditClick(item)}
-                            className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-colors"
+                            className="p-2 text-muted-foreground hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg transition-colors"
                           >
                             <Edit2 size={16} />
-                          </button>
-                          <button 
+                          </Button>
+                          <Button variant="legacy" size="legacy"
                             onClick={() => setDeleteConfirmId(item.id)}
-                            className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                            className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
                           >
                             <Trash2 size={16} />
-                          </button>
+                          </Button>
                         </>
                       )}
                     </div>
@@ -205,12 +209,12 @@ export const CaseConfigPanel = () => {
                 )}
               </div>
             ))}
-            
+
             {currentItems.length === 0 && !isAdding && (
-              <div className="text-center py-12 bg-slate-800/30 rounded-lg border border-slate-700/50 border-dashed">
-                <Settings className="mx-auto h-12 w-12 text-slate-600 mb-3" />
-                <h3 className="text-sm font-medium text-slate-400">No hay elementos configurados</h3>
-                <p className="text-xs text-slate-500 mt-1">Añade uno nuevo para comenzar.</p>
+              <div className="text-center py-12 bg-card rounded-lg border border-border/50 border-dashed">
+                <Settings className="mx-auto h-12 w-12 text-secondary-foreground mb-3" />
+                <h3 className="text-sm font-medium text-muted-foreground">No hay elementos configurados</h3>
+                <p className="text-xs text-muted-foreground mt-1">Añade uno nuevo para comenzar.</p>
               </div>
             )}
           </div>
@@ -230,12 +234,12 @@ const ItemForm = ({ form, setForm, onSave, onCancel, activeTab, config }) => {
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-medium text-slate-400 mb-1">Nombre</label>
-          <input 
-            type="text" 
-            value={form.name || ''} 
+          <Label className="block text-xs font-medium text-muted-foreground mb-1">Nombre</Label>
+          <Input
+            type="text"
+            value={form.name || ''}
             onChange={e => setForm({...form, name: e.target.value})}
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+            className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm text-muted-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring"
             placeholder="Ej. Daños y Perjuicios"
             autoFocus
           />
@@ -243,26 +247,26 @@ const ItemForm = ({ form, setForm, onSave, onCancel, activeTab, config }) => {
 
         {needsFuero && (
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1">Fuero Relacionado</label>
-            <select
+            <Label className="block text-xs font-medium text-muted-foreground mb-1">Fuero Relacionado</Label>
+            <NativeSelect
               value={form.fueroId || ''}
               onChange={e => setForm({...form, fueroId: e.target.value})}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm text-muted-foreground focus:outline-none focus:border-ring"
             >
               <option value="" disabled>Selecciona un fuero</option>
               {config.fueros.map(f => (
                 <option key={f.id} value={f.id}>{f.name}</option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
         )}
 
         {needsColor && (
           <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-slate-400 mb-2">Color Distintivo</label>
+            <Label className="block text-xs font-medium text-muted-foreground mb-2">Color Distintivo</Label>
             <div className="flex flex-wrap gap-2">
               {COLOR_OPTIONS.map(color => (
-                <button
+                <Button variant="legacy" size="legacy"
                   key={color.value}
                   type="button"
                   onClick={() => setForm({...form, color: color.value})}
@@ -277,42 +281,42 @@ const ItemForm = ({ form, setForm, onSave, onCancel, activeTab, config }) => {
 
         {needsIcon && (
           <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-slate-400 mb-2">Icono</label>
+            <Label className="block text-xs font-medium text-muted-foreground mb-2">Icono</Label>
             <div className="flex gap-2">
               {Object.keys(ICON_MAP).map(iconName => (
-                <button
+                <Button variant="legacy" size="legacy"
                   key={iconName}
                   type="button"
                   onClick={() => setForm({...form, icon: iconName})}
                   className={`p-2 rounded-lg border transition-colors ${
-                    form.icon === iconName 
-                      ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400' 
-                      : 'border-slate-700 text-slate-400 hover:bg-slate-800'
+                    form.icon === iconName
+                      ? 'bg-indigo-500/20 border-ring text-indigo-400'
+                      : 'border-border text-muted-foreground hover:bg-card'
                   }`}
                 >
                   {ICON_MAP[iconName]}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
         )}
       </div>
 
-      <div className="flex justify-end gap-2 pt-2 border-t border-slate-700/50">
-        <button 
+      <div className="flex justify-end gap-2 pt-2 border-t border-border/50">
+        <Button variant="legacy" size="legacy"
           onClick={onCancel}
-          className="px-3 py-1.5 text-sm text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
+          className="px-3 py-1.5 text-sm text-muted-foreground hover:text-muted-foreground hover:bg-card rounded-lg transition-colors"
         >
           Cancelar
-        </button>
-        <button 
+        </Button>
+        <Button variant="legacy" size="legacy"
           onClick={onSave}
           disabled={!form.name}
           className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-indigo-500/20"
         >
           <Check size={16} />
           Guardar
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -1,3 +1,9 @@
+import { Card } from './ui/card';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { NativeSelect } from './ui/native-select';
+import { Label } from './ui/label';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from './ui/table';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
@@ -116,46 +122,46 @@ export const ExpensePanel = ({ caseId, onReceiptSaved }) => {
         finally { setDownloading(null); }
     };
 
-    if (loading) return <div className="p-4 text-center text-gray-500">Cargando gastos...</div>;
+    if (loading) return <div className="p-4 text-center text-muted-foreground">Cargando gastos...</div>;
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+        <Card className="bg-card rounded-xl shadow-sm border border-border overflow-hidden mt-6">
+            <div className="px-6 py-4 border-b border-border bg-background flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-primary" />
-                    <h3 className="text-base font-semibold text-gray-900">Gastos del Expediente</h3>
+                    <DollarSign className="w-4 h-4 text-link" />
+                    <h3 className="text-base font-semibold text-foreground">Gastos del Expediente</h3>
                 </div>
-                <div className="font-bold text-gray-800">
+                <div className="font-bold text-foreground">
                     Total: {error ? 'No disponible' : `$${total.toLocaleString('es-AR')}`}
                 </div>
             </div>
             <div className="p-6">
-                {error && <div role="alert" className="mb-4 text-red-700">{error} <button onClick={() => { setLoading(true); fetchExpenses(); }} className="underline">Reintentar</button></div>}
+                {error && <div role="alert" className="mb-4 text-status-red">{error} <Button variant="legacy" size="legacy" onClick={() => { setLoading(true); fetchExpenses(); }} className="underline">Reintentar</Button></div>}
                 <form onSubmit={handleAdd}>
                 <fieldset disabled={busy || !!error} className="flex gap-2 mb-4 flex-wrap">
-                    <input 
-                        type="text" 
-                        placeholder="Descripción" 
+                    <Input
+                        type="text"
+                        placeholder="Descripción"
                         aria-label="Descripción del gasto"
-                        className="flex-1 border-gray-300 rounded-lg text-sm min-w-[200px]"
+                        className="flex-1 border-border rounded-lg text-sm min-w-[200px]"
                         value={formData.description}
                         onChange={(e) => setFormData({...formData, description: e.target.value})}
                         required
                     />
-                    <input 
-                        type="number" 
-                        placeholder="Monto" 
+                    <Input
+                        type="number"
+                        placeholder="Monto"
                         aria-label="Monto del gasto"
-                        className="w-32 border-gray-300 rounded-lg text-sm"
+                        className="w-32 border-border rounded-lg text-sm"
                         value={formData.amount}
                         onChange={(e) => setFormData({...formData, amount: e.target.value})}
                         required
                         min="0.01"
                         step="0.01"
                     />
-                    <select 
+                    <NativeSelect
                         aria-label="Tipo de gasto"
-                        className="w-40 border-gray-300 rounded-lg text-sm"
+                        className="w-40 border-border rounded-lg text-sm"
                         value={formData.type}
                         onChange={(e) => setFormData({...formData, type: e.target.value})}
                     >
@@ -164,91 +170,91 @@ export const ExpensePanel = ({ caseId, onReceiptSaved }) => {
                         <option value="MOVILIDAD">Movilidad</option>
                         <option value="HONORARIOS">Honorarios</option>
                         <option value="OTROS">Otros</option>
-                    </select>
+                    </NativeSelect>
 
-                    <label className="flex items-center gap-1 cursor-pointer px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                    <Label className="flex items-center gap-1 cursor-pointer px-3 py-2 border border-border rounded-lg text-sm text-secondary-foreground hover:bg-background transition-colors">
                         <Paperclip className="w-4 h-4" />
                         {formData.receipt ? formData.receipt.name : 'Adjuntar'}
-                        <input 
-                            type="file" 
+                        <input
+                            type="file"
                             ref={receiptInput}
                             aria-label="Comprobante del nuevo gasto"
                             accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp"
-                            className="hidden" 
+                            className="hidden"
                             onChange={(e) => setFormData({...formData, receipt: e.target.files[0]})}
                         />
-                    </label>
+                    </Label>
 
-                    <button 
-                        type="submit" 
+                    <Button variant="legacy" size="legacy"
+                        type="submit"
                         disabled={uploading}
                         className={`bg-primary text-white px-4 py-2 text-sm rounded-lg transition-colors flex items-center gap-1 ${uploading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-primary-dark'}`}
                     >
                         <Plus className="w-4 h-4"/> {uploading ? `Guardando${progress ? ` (${progress}%)` : ''}...` : 'Añadir'}
-                    </button>
+                    </Button>
                 </fieldset>
                 </form>
-                <p className="text-xs text-gray-500 mb-4">Comprobantes de hasta 20 MB. El archivo se guarda al confirmar el gasto y se descarga con sesión.</p>
+                <p className="text-xs text-muted-foreground mb-4">Comprobantes de hasta 20 MB. El archivo se guarda al confirmar el gasto y se descarga con sesión.</p>
 
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm cursor-default">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Monto</th>
-                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Estado</th>
-                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Doc</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                    <Table className="min-w-full divide-y divide-border text-sm cursor-default">
+                        <TableHeader className="bg-background">
+                            <TableRow>
+                                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Fecha</TableHead>
+                                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Descripción</TableHead>
+                                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Tipo</TableHead>
+                                <TableHead className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Monto</TableHead>
+                                <TableHead className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase">Estado</TableHead>
+                                <TableHead className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase">Doc</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody className="bg-card divide-y divide-border">
                             {expenses.length === 0 ? (
-                                <tr>
-                                    <td colSpan="6" className="px-4 py-4 text-center text-gray-400 italic">{error ? 'Los gastos no están disponibles.' : 'No hay gastos registrados.'}</td>
-                                </tr>
+                                <TableRow>
+                                    <TableCell colSpan="6" className="px-4 py-4 text-center text-muted-foreground italic">{error ? 'Los gastos no están disponibles.' : 'No hay gastos registrados.'}</TableCell>
+                                </TableRow>
                             ) : (
                                 expenses.map(e => (
-                                    <tr key={e.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-4 py-3 whitespace-nowrap text-gray-500">{new Date(e.createdAt).toLocaleDateString('es-AR')}</td>
-                                        <td className="px-4 py-3 font-medium text-gray-900">{e.description}</td>
-                                        <td className="px-4 py-3 text-gray-500">
-                                            <span className="px-2 py-1 bg-gray-100 rounded text-xs">{e.type}</span>
-                                        </td>
-                                        <td className="px-4 py-3 text-right font-bold text-gray-700">${e.amount.toLocaleString('es-AR')}</td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${e.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
+                                    <TableRow key={e.id} className="hover:bg-background transition-colors">
+                                        <TableCell className="px-4 py-3 whitespace-nowrap text-muted-foreground">{new Date(e.createdAt).toLocaleDateString('es-AR')}</TableCell>
+                                        <TableCell className="px-4 py-3 font-medium text-foreground">{e.description}</TableCell>
+                                        <TableCell className="px-4 py-3 text-muted-foreground">
+                                            <span className="px-2 py-1 bg-muted rounded text-xs">{e.type}</span>
+                                        </TableCell>
+                                        <TableCell className="px-4 py-3 text-right font-bold text-foreground">${e.amount.toLocaleString('es-AR')}</TableCell>
+                                        <TableCell className="px-4 py-3 text-center">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${e.status === 'PENDING' ? 'bg-yellow-100 text-status-yellow' : 'bg-green-100 text-status-green'}`}>
                                                 {e.status}
                                             </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
+                                        </TableCell>
+                                        <TableCell className="px-4 py-3 text-center">
                                             {e.receiptStatus === 'AVAILABLE' && e.receipt ? (
-                                                <button
+                                                <Button variant="legacy" size="legacy"
                                                     onClick={() => downloadReceipt(e)}
                                                     disabled={downloading === e.id}
                                                     aria-label={`Descargar comprobante de ${e.description}`}
-                                                    className="text-primary hover:text-primary-dark transition-colors inline-block"
+                                                    className="text-link hover:text-primary-dark transition-colors inline-block"
                                                     title={e.receipt.name}
                                                 >
                                                     <Download className="w-4 h-4" />
-                                                </button>
+                                                </Button>
                                             ) : (
-                                                <span className="text-xs text-gray-500">{e.receiptStatus === 'MISSING' ? 'Archivo no disponible' : e.receiptUrl ? 'Comprobante anterior sin archivo verificable' : 'Sin comprobante'}</span>
+                                                <span className="text-xs text-muted-foreground">{e.receiptStatus === 'MISSING' ? 'Archivo no disponible' : e.receiptUrl ? 'Comprobante anterior sin archivo verificable' : 'Sin comprobante'}</span>
                                             )}
-                                            <label className="block text-xs text-primary cursor-pointer mt-1">
+                                            <Label className="block text-xs text-link cursor-pointer mt-1">
                                                 {receiptBusy === e.id ? 'Guardando...' : e.receiptStatus === 'AVAILABLE' ? 'Reemplazar' : 'Cargar comprobante'}
                                                 <input type="file" className="hidden" aria-label={`Cargar comprobante de ${e.description}`}
                                                     disabled={busy || !!error} accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp"
                                                     onChange={event => attachReceipt(event, e)} />
-                                            </label>
-                                        </td>
-                                    </tr>
+                                            </Label>
+                                        </TableCell>
+                                    </TableRow>
                                 ))
                             )}
-                        </tbody>
-                    </table>
+                        </TableBody>
+                    </Table>
                 </div>
             </div>
-        </div>
+        </Card>
     );
 };

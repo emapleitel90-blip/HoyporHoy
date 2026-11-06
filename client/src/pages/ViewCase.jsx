@@ -1,3 +1,5 @@
+import { Card } from '../components/ui/card';
+import { Button } from '../components/ui/button';
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
@@ -18,31 +20,31 @@ const STATUS_LABELS = {
     PENDING: 'Pendiente', REJECTED: 'Rechazado',
 };
 const STATUS_COLORS = {
-    OPEN: 'bg-green-100 text-green-800', CLOSED: 'bg-gray-100 text-gray-700',
-    IN_REVIEW: 'bg-blue-100 text-blue-800', PENDING: 'bg-yellow-100 text-yellow-800',
-    REJECTED: 'bg-red-100 text-red-800',
+    OPEN: 'bg-green-100 text-status-green', CLOSED: 'bg-muted text-foreground',
+    IN_REVIEW: 'bg-blue-100 text-link', PENDING: 'bg-yellow-100 text-status-yellow',
+    REJECTED: 'bg-red-100 text-status-red',
 };
 
 const InfoRow = ({ label, value }) => {
     if (!value && value !== 0) return null;
     return (
         <div>
-            <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</dt>
-            <dd className="mt-1 text-sm text-gray-900">{value}</dd>
+            <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</dt>
+            <dd className="mt-1 text-sm text-foreground">{value}</dd>
         </div>
     );
 };
 
 const Section = ({ icon: Icon, title, children }) => (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
-            <Icon className="w-4 h-4 text-primary" />
-            <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+    <Card className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+        <div className="px-6 py-4 border-b border-border bg-background flex items-center gap-2">
+            <Icon className="w-4 h-4 text-link" />
+            <h3 className="text-base font-semibold text-foreground">{title}</h3>
         </div>
         <dl className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
             {children}
         </dl>
-    </div>
+    </Card>
 );
 
 const ScorePanel = ({ score }) => {
@@ -53,10 +55,10 @@ const ScorePanel = ({ score }) => {
     const color = isIdeal ? 'text-green-400' : isWarn ? 'text-yellow-400' : 'text-red-400';
     const bg = isIdeal ? 'bg-green-500/20' : isWarn ? 'bg-yellow-500/20' : 'bg-red-500/20';
     return (
-        <div className="p-6 bg-slate-900 rounded-xl text-white flex items-center justify-between">
+        <div className="admission-score p-6 bg-primary rounded-xl text-white flex items-center justify-between">
             <div>
                 <h4 className="text-base font-bold">Score de Admisión</h4>
-                <p className="text-slate-400 text-sm">Resultado del análisis de admisión (10 indicadores)</p>
+                <p className="text-muted-foreground text-sm">Resultado del análisis de admisión (10 indicadores)</p>
             </div>
             <div className="text-right">
                 <span className={`block text-3xl font-bold ${color}`}>{score} pts</span>
@@ -70,17 +72,17 @@ const ScorePanel = ({ score }) => {
 
 const FodaPanel = ({ details }) => {
     const items = [
-        { key: 'fodaFortalezas', label: 'Fortalezas', color: 'border-green-200 bg-green-50', titleColor: 'text-green-800', badge: 'bg-green-600' },
-        { key: 'fodaOportunidades', label: 'Oportunidades', color: 'border-blue-200 bg-blue-50', titleColor: 'text-blue-800', badge: 'bg-blue-600' },
-        { key: 'fodaDebilidades', label: 'Debilidades', color: 'border-yellow-200 bg-yellow-50', titleColor: 'text-yellow-800', badge: 'bg-yellow-600' },
-        { key: 'fodaAmenazas', label: 'Amenazas', color: 'border-red-200 bg-red-50', titleColor: 'text-red-800', badge: 'bg-red-600' },
+        { key: 'fodaFortalezas', label: 'Fortalezas', color: 'border-green-200 bg-green-50', titleColor: 'text-status-green', badge: 'bg-green-600' },
+        { key: 'fodaOportunidades', label: 'Oportunidades', color: 'border-ring bg-blue-50', titleColor: 'text-link', badge: 'bg-blue-600' },
+        { key: 'fodaDebilidades', label: 'Debilidades', color: 'border-yellow-200 bg-yellow-50', titleColor: 'text-status-yellow', badge: 'bg-yellow-600' },
+        { key: 'fodaAmenazas', label: 'Amenazas', color: 'border-red-200 bg-red-50', titleColor: 'text-status-red', badge: 'bg-red-600' },
     ];
     if (!items.some(i => details[i.key])) return null;
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
-                <BarChart2 className="w-4 h-4 text-primary" />
-                <h3 className="text-base font-semibold text-gray-900">Análisis FODA</h3>
+        <Card className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+            <div className="px-6 py-4 border-b border-border bg-background flex items-center gap-2">
+                <BarChart2 className="w-4 h-4 text-link" />
+                <h3 className="text-base font-semibold text-foreground">Análisis FODA</h3>
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {items.map(item => details[item.key] && (
@@ -91,11 +93,11 @@ const FodaPanel = ({ details }) => {
                             </span>
                             {item.label}
                         </h4>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{details[item.key]}</p>
+                        <p className="text-sm text-foreground whitespace-pre-wrap">{details[item.key]}</p>
                     </div>
                 ))}
             </div>
-        </div>
+        </Card>
     );
 };
 
@@ -167,22 +169,22 @@ const ViewCase = () => {
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
         </div>
     );
-    
+
     if (error) return (
         <div className="flex flex-col items-center justify-center py-20">
-            <div className="bg-red-50 text-red-800 p-6 rounded-xl border border-red-200 max-w-md w-full text-center shadow-sm">
+            <div className="bg-red-50 text-status-red p-6 rounded-xl border border-red-200 max-w-md w-full text-center shadow-sm">
                 <h3 className="text-lg font-bold mb-2">Acceso Denegado / Error</h3>
                 <p className="mb-6">{error}</p>
                 <div className="flex justify-center gap-4">
-                    <Link to="/cases" className="px-4 py-2 bg-white text-gray-700 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
+                    <Link to="/cases" className="px-4 py-2 bg-card text-foreground font-medium rounded-lg border border-border hover:bg-background transition-colors">
                         Volver a expedientes
                     </Link>
-                    <button 
+                    <Button variant="legacy" size="legacy"
                         onClick={() => setRetry(value => value + 1)}
                         className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors"
                     >
                         Reintentar
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
@@ -209,26 +211,26 @@ const ViewCase = () => {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                    <Link to="/cases" className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                    <Link to="/cases" className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">
                         <ArrowLeft className="w-5 h-5" />
                     </Link>
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-800">{caseItem.clientName || caseItem.title}</h2>
+                        <h2 className="text-2xl font-bold text-foreground">{caseItem.clientName || caseItem.title}</h2>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <span className="text-sm text-gray-400">{caseItem.caseNumber}</span>
-                            {caseItem.fuero && <span className="px-2 py-0.5 text-xs bg-indigo-100 text-indigo-700 rounded-full font-medium">{caseItem.fuero}</span>}
-                            <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${STATUS_COLORS[caseItem.status] || 'bg-gray-100 text-gray-700'}`}>
+                            <span className="text-sm text-muted-foreground">{caseItem.caseNumber}</span>
+                            {caseItem.fuero && <span className="px-2 py-0.5 text-xs bg-indigo-100 text-link rounded-full font-medium">{caseItem.fuero}</span>}
+                            <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${STATUS_COLORS[caseItem.status] || 'bg-muted text-foreground'}`}>
                                 {STATUS_LABELS[caseItem.status] || caseItem.status}
                             </span>
                         </div>
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={handleGenerateDocument} className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+                    <Button variant="legacy" size="legacy" onClick={handleGenerateDocument} className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
                         <Download className="-ml-1 mr-2 h-4 w-4" />
                         Generar Cédula
-                    </button>
-                    <Link to={`/cases/${id}/edit`} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    </Button>
+                    <Link to={`/cases/${id}/edit`} className="inline-flex items-center px-4 py-2 border border-border rounded-lg shadow-sm text-sm font-medium text-foreground bg-card hover:bg-background">
                         <Edit className="-ml-1 mr-2 h-4 w-4" />
                         Editar
                     </Link>
@@ -314,19 +316,19 @@ const ViewCase = () => {
 
             {/* 6. Documentación */}
             {docs.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-primary" />
-                        <h3 className="text-base font-semibold text-gray-900">Documentación presentada</h3>
+                <Card className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+                    <div className="px-6 py-4 border-b border-border bg-background flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-link" />
+                        <h3 className="text-base font-semibold text-foreground">Documentación presentada</h3>
                     </div>
                     <div className="p-6 flex flex-wrap gap-2">
                         {docs.map(doc => (
-                            <span key={doc} className="px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full text-xs font-medium">
+                            <span key={doc} className="px-3 py-1 bg-green-50 text-status-green border border-green-200 rounded-full text-xs font-medium">
                                 ✓ {doc}
                             </span>
                         ))}
                     </div>
-                </div>
+                </Card>
             )}
 
             {/* 8. Análisis Psicológico */}
@@ -376,26 +378,26 @@ const ViewCase = () => {
 
             {/* 12. Línea de Tiempo */}
             {hitosFecha.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
-                        <CalendarDays className="w-4 h-4 text-primary" />
-                        <h3 className="text-base font-semibold text-gray-900">Línea de Tiempo</h3>
+                <Card className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+                    <div className="px-6 py-4 border-b border-border bg-background flex items-center gap-2">
+                        <CalendarDays className="w-4 h-4 text-link" />
+                        <h3 className="text-base font-semibold text-foreground">Línea de Tiempo</h3>
                     </div>
                     <div className="p-6 space-y-4">
                         {hitosFecha.map((hito, i) => (
                             <div key={i} className="flex gap-4 items-start">
                                 <div className="flex flex-col items-center">
                                     <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">{i + 1}</div>
-                                    {i < hitosFecha.length - 1 && <div className="w-0.5 h-full bg-gray-200 mt-1 flex-1 min-h-[20px]"></div>}
+                                    {i < hitosFecha.length - 1 && <div className="w-0.5 h-full bg-secondary mt-1 flex-1 min-h-[20px]"></div>}
                                 </div>
                                 <div className="pb-4">
-                                    {hito.fecha && <p className="text-xs text-gray-400 font-medium mb-1">{new Date(hito.fecha).toLocaleDateString('es-AR')}</p>}
-                                    <p className="text-sm text-gray-800">{hito.desc || '—'}</p>
+                                    {hito.fecha && <p className="text-xs text-muted-foreground font-medium mb-1">{new Date(hito.fecha).toLocaleDateString('es-AR')}</p>}
+                                    <p className="text-sm text-foreground">{hito.desc || '—'}</p>
                                 </div>
                             </div>
                         ))}
                     </div>
-                </div>
+                </Card>
             )}
 
             {/* 13. Administrativo */}
@@ -415,9 +417,9 @@ const ViewCase = () => {
             )}
 
             {/* Application Skills Panels */}
-            <div className="bg-white border border-gray-100 rounded-xl p-5">
+            <Card className="bg-card border border-border rounded-xl p-5">
                 <InfoRow label="Abogado responsable" value={caseItem.assignedLawyer?.name || (Object.prototype.hasOwnProperty.call(details, 'assignedLawyerId') ? 'Sin asignar' : details.abogadoAsignado || 'Sin asignar')} />
-            </div>
+            </Card>
             <TaskPanel caseItem={caseItem} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -428,12 +430,12 @@ const ViewCase = () => {
                         ? { ...current, files: [...(current.files || []).filter(item => item.id !== file.id), file] } : current)} />
                 </div>
             </div>
-            
+
             <FollowUpPanel caseItem={caseItem} onChanged={() => setSummaryVersion(value => value + 1)} />
-            <CaseFilePanel 
-                caseId={caseItem.id} 
-                studioId={caseItem.studioId} 
-                initialFiles={caseItem.files} 
+            <CaseFilePanel
+                caseId={caseItem.id}
+                studioId={caseItem.studioId}
+                initialFiles={caseItem.files}
                 onFilesChange={files => setCaseItem(current => ({ ...current, files }))}
             />
 
@@ -443,7 +445,7 @@ const ViewCase = () => {
             <JurisprudencePanel caseId={caseItem.id} caseFuero={caseItem.fuero || details.fuero} />
 
             {/* Metadata */}
-            <div className="text-xs text-gray-400 text-right">
+            <div className="text-xs text-muted-foreground text-right">
                 <span>Creado: {new Date(caseItem.createdAt).toLocaleString('es-AR')}</span>
                 {caseItem.createdBy && <span className="ml-3">por {caseItem.createdBy.name || caseItem.createdBy.email}</span>}
                 {caseItem.updatedAt !== caseItem.createdAt && <span className="ml-3">· Última actualización: {new Date(caseItem.updatedAt).toLocaleString('es-AR')}</span>}

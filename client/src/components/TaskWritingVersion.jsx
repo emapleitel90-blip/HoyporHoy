@@ -1,3 +1,5 @@
+import { Label } from './ui/label';
+import { NativeSelect } from './ui/native-select';
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
@@ -34,11 +36,11 @@ export function TaskWritingVersion({ caseId, onSelect, selected, fixed, onReady 
         return () => { cancelled = true; };
     }, [caseId, writingId, number, versionId]);
     return <div className="border rounded p-3 space-y-2">
-        {!fixed && <><label>Escrito para entregar<select className="block w-full border p-2" value={writing} onChange={e => {setWriting(e.target.value);setVersions([]);onSelect('');}}>
+        {!fixed && <><Label>Escrito para entregar<NativeSelect className="block w-full border p-2" value={writing} onChange={e => {setWriting(e.target.value);setVersions([]);onSelect('');}}>
             <option value="">Sin escrito seleccionado</option>{list.map(item => <option key={item.id} value={item.id}>{item.latestVersion.title}</option>)}
-        </select></label><label>Versión para entregar<select className="block w-full border p-2" value={selected || ''} onChange={e => onSelect(e.target.value)}>
+        </NativeSelect></Label><Label>Versión para entregar<NativeSelect className="block w-full border p-2" value={selected || ''} onChange={e => onSelect(e.target.value)}>
             <option value="">Seleccioná una versión guardada</option>{versions.map(item => <option key={item.id} value={item.id}>Versión {item.number} · {item.title}</option>)}
-        </select></label></>}
+        </NativeSelect></Label></>}
         {error && <p role="alert">{error}</p>}
         {snapshot && <article><h4 className="font-semibold">{snapshot.title} · versión {snapshot.number}</h4><pre className="whitespace-pre-wrap break-words font-serif">{snapshot.content}</pre></article>}
     </div>;

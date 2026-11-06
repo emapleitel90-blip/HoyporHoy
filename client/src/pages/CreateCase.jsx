@@ -1,3 +1,7 @@
+import { Label } from '../components/ui/label';
+import { NativeSelect } from '../components/ui/native-select';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Save, ArrowRight, ArrowLeft, Plus, Trash2, X } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -161,15 +165,15 @@ const DynamicField = ({ field, formData, handleChange, studioUsers = [] }) => {
     if (field.name === 'assignedLawyerId' || field.name === 'abogadoAsignado') {
         return (
             <div className={field.fullWidth ? 'col-span-2' : ''}>
-                <label htmlFor="assignedLawyerId" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                <Label htmlFor="assignedLawyerId" className="block text-xs font-bold text-foreground uppercase tracking-wider mb-2">
                     {field.label}
-                </label>
-                <select
+                </Label>
+                <NativeSelect
                     id="assignedLawyerId"
                     name="assignedLawyerId"
                     value={formData.assignedLawyerId || ''}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-medium"
+                    className="w-full px-4 py-3 bg-card border border-border rounded-xl text-foreground text-sm focus:ring-2 focus:ring-ring focus:border-ring transition-all font-medium"
                 >
                     <option value="">Sin asignar / Seleccionar responsable...</option>
                     {formData.assignedLawyerId && !studioUsers.some(u => u.id === formData.assignedLawyerId) && (
@@ -178,7 +182,7 @@ const DynamicField = ({ field, formData, handleChange, studioUsers = [] }) => {
                     {studioUsers.map(u => (
                         <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
                     ))}
-                </select>
+                </NativeSelect>
             </div>
         );
     }
@@ -362,7 +366,7 @@ const CreateCase = () => {
         try {
             setSaving(true);
             setError(null);
-            
+
             if (!user) {
                 showToast('Usuario no autenticado', 'error');
                 return;
@@ -426,7 +430,7 @@ const CreateCase = () => {
 
     if (loading) return (
         <div className="flex items-center justify-center h-[60vh]">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-ring"></div>
         </div>
     );
 
@@ -435,52 +439,52 @@ const CreateCase = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter">{isEditMode ? 'Editar Expediente' : 'Alta de Nuevo Caso'}</h2>
-                    <p className="text-slate-500 font-medium">Entrevista de admisión y clasificación jurídica LyP.</p>
+                    <h2 className="text-3xl font-black text-foreground tracking-tighter">{isEditMode ? 'Editar Expediente' : 'Alta de Nuevo Caso'}</h2>
+                    <p className="text-muted-foreground font-medium">Entrevista de admisión y clasificación jurídica LyP.</p>
                 </div>
                 <div className="flex items-center space-x-3">
-                    <button className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-all" onClick={() => navigate('/cases')}>
+                    <Button variant="legacy" size="legacy" className="px-6 py-2.5 bg-card border border-border text-secondary-foreground rounded-2xl font-bold text-sm hover:bg-background transition-all" onClick={() => navigate('/cases')}>
                         Cancelar
-                    </button>
-                    <button
+                    </Button>
+                    <Button variant="legacy" size="legacy"
                         onClick={handleSubmit}
                         disabled={saving}
                         className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2.5 rounded-2xl font-bold text-sm shadow-lg shadow-indigo-600/20 transition-all hover:scale-105 disabled:opacity-50"
                     >
                         <Save size={18} />
                         <span>{saving ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Finalizar Admisión')}</span>
-                    </button>
+                    </Button>
                 </div>
             </div>
 
             {error && (
-                <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center space-x-3 text-red-700 animate-in shake duration-500">
+                <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center space-x-3 text-status-red animate-in shake duration-500">
                     <X className="w-5 h-5 flex-shrink-0" />
                     <p className="text-sm font-bold">{error}</p>
                 </div>
             )}
 
-            <div className="bg-white rounded-[32px] border border-slate-200 shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[700px]">
+            <Card className="bg-card rounded-[32px] border border-border shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[700px]">
                 {/* Sidebar Stepper */}
-                <div className="w-full md:w-72 bg-slate-50 border-r border-slate-200 overflow-y-auto">
+                <div className="w-full md:w-72 bg-background border-r border-border overflow-y-auto">
                     <div className="p-6">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Módulos de Admisión</p>
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-6">Módulos de Admisión</p>
                         <nav className="space-y-1.5">
                             {sections.map((section, idx) => {
                                 const isActive = activeSectionId === section.id;
                                 return (
-                                    <button
+                                    <Button variant="legacy" size="legacy"
                                         key={section.id}
                                         onClick={() => setActiveSectionId(section.id)}
                                         className={`w-full flex items-center text-left px-4 py-3 rounded-xl transition-all duration-300 ${isActive
-                                            ? 'bg-white text-indigo-700 shadow-md ring-1 ring-slate-200 translate-x-1'
-                                            : 'text-slate-500 hover:bg-slate-200/50 hover:text-slate-900'}`}
+                                            ? 'bg-card text-link shadow-md ring-1 ring-ring translate-x-1'
+                                            : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'}`}
                                     >
-                                        <span className={`w-6 h-6 flex-shrink-0 inline-flex items-center justify-center rounded-lg text-[11px] font-black mr-3 ${isActive ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                                        <span className={`w-6 h-6 flex-shrink-0 inline-flex items-center justify-center rounded-lg text-[11px] font-black mr-3 ${isActive ? 'bg-indigo-600 text-white' : 'bg-secondary text-muted-foreground'}`}>
                                             {idx + 1}
                                         </span>
-                                        <span className={`text-sm font-bold leading-tight ${isActive ? 'text-slate-900' : ''}`}>{section.title}</span>
-                                    </button>
+                                        <span className={`text-sm font-bold leading-tight ${isActive ? 'text-foreground' : ''}`}>{section.title}</span>
+                                    </Button>
                                 );
                             })}
                         </nav>
@@ -488,10 +492,10 @@ const CreateCase = () => {
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 p-10 overflow-y-auto bg-white">
+                <div className="flex-1 p-10 overflow-y-auto bg-card">
                     <div className="max-w-3xl">
                         <div className="mb-10">
-                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                            <h3 className="text-2xl font-black text-foreground tracking-tight">
                                 {currentSection?.title}
                             </h3>
                             <div className="h-1.5 w-12 bg-indigo-600 rounded-full mt-2"></div>
@@ -501,51 +505,51 @@ const CreateCase = () => {
                         {currentSection?.type === 'checklist' && (
                             <div className="space-y-8">
                                 <SectionInfo>{currentSection.description || 'Marque los elementos disponibles.'}</SectionInfo>
-                                
+
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {/* Default items from config */}
                                     {(currentSection.items || []).map(item => (
-                                        <label key={item} className={`flex items-center space-x-3 p-4 rounded-2xl border transition-all cursor-pointer ${
-                                            formData[`check_${currentSection.id}_${item}`] 
-                                            ? 'bg-indigo-50 border-indigo-200 shadow-sm' 
-                                            : 'bg-white border-slate-100 hover:border-slate-300'
+                                        <Label key={item} className={`flex items-center space-x-3 p-4 rounded-2xl border transition-all cursor-pointer ${
+                                            formData[`check_${currentSection.id}_${item}`]
+                                            ? 'bg-indigo-50 border-ring shadow-sm'
+                                            : 'bg-card border-border hover:border-border'
                                         }`}>
                                             <input
                                                 type="checkbox"
                                                 checked={!!(formData[`check_${currentSection.id}_${item}`])}
                                                 onChange={(e) => setFormData(prev => ({ ...prev, [`check_${currentSection.id}_${item}`]: e.target.checked }))}
-                                                className="w-5 h-5 text-indigo-600 border-slate-300 rounded-lg focus:ring-indigo-500"
+                                                className="w-5 h-5 text-link border-border rounded-lg focus:ring-ring"
                                             />
-                                            <span className={`text-sm font-bold ${formData[`check_${currentSection.id}_${item}`] ? 'text-indigo-900' : 'text-slate-600'}`}>{item}</span>
-                                        </label>
+                                            <span className={`text-sm font-bold ${formData[`check_${currentSection.id}_${item}`] ? 'text-link' : 'text-secondary-foreground'}`}>{item}</span>
+                                        </Label>
                                     ))}
 
                                     {/* Custom items added by user */}
                                     {(customItems[currentSection.id] || []).map((item, idx) => (
-                                        <div key={`custom-${idx}`} className="flex items-center space-x-3 p-4 rounded-2xl border bg-indigo-50/30 border-indigo-200 group">
+                                        <div key={`custom-${idx}`} className="flex items-center space-x-3 p-4 rounded-2xl border bg-indigo-50/30 border-ring group">
                                             <input
                                                 type="checkbox"
                                                 checked={!!(formData[`check_${currentSection.id}_custom_${idx}`])}
                                                 onChange={(e) => setFormData(prev => ({ ...prev, [`check_${currentSection.id}_custom_${idx}`]: e.target.checked }))}
-                                                className="w-5 h-5 text-indigo-600 border-indigo-300 rounded-lg focus:ring-indigo-500"
+                                                className="w-5 h-5 text-link border-ring rounded-lg focus:ring-ring"
                                             />
-                                            <span className="text-sm font-bold text-indigo-900 flex-1">{item}</span>
-                                            <button 
+                                            <span className="text-sm font-bold text-link flex-1">{item}</span>
+                                            <Button variant="legacy" size="legacy"
                                                 onClick={() => handleRemoveCustomItem(currentSection.id, idx)}
-                                                className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                                className="text-muted-foreground hover:text-status-red opacity-0 group-hover:opacity-100 transition-all"
                                             >
                                                 <Trash2 size={14} />
-                                            </button>
+                                            </Button>
                                         </div>
                                     ))}
 
-                                    <button 
+                                    <Button variant="legacy" size="legacy"
                                         onClick={() => handleAddCustomItem(currentSection.id)}
-                                        className="flex items-center justify-center space-x-2 p-4 rounded-2xl border border-slate-200 border-dashed hover:bg-slate-50 hover:border-indigo-300 transition-all text-slate-400 hover:text-indigo-600"
+                                        className="flex items-center justify-center space-x-2 p-4 rounded-2xl border border-border border-dashed hover:bg-background hover:border-ring transition-all text-muted-foreground hover:text-link"
                                     >
                                         <Plus size={18} />
                                         <span className="text-sm font-bold">Agregar Personalizado</span>
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         )}
@@ -556,46 +560,46 @@ const CreateCase = () => {
                                 <SectionInfo>{currentSection.description}</SectionInfo>
                                 <div className="space-y-4">
                                     {SCORING_ITEMS.map((item) => (
-                                        <div key={item.key} className="bg-slate-50/50 p-6 rounded-[24px] border border-slate-100">
+                                        <div key={item.key} className="bg-background/50 p-6 rounded-[24px] border border-border">
                                             <div className="mb-4">
-                                                <p className="font-black text-slate-900 text-sm tracking-tight">{item.label}</p>
-                                                <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{item.desc}</p>
+                                                <p className="font-black text-foreground text-sm tracking-tight">{item.label}</p>
+                                                <p className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider">{item.desc}</p>
                                             </div>
                                             <div className="grid grid-cols-3 gap-3">
                                                 {['verde', 'amarillo', 'rojo'].map(color => (
-                                                    <button
+                                                    <Button variant="legacy" size="legacy"
                                                         key={color}
                                                         onClick={() => handleScoreSelect(item.key, color)}
                                                         className={`flex items-center justify-center p-3 rounded-xl border text-[11px] font-black uppercase tracking-widest transition-all ${scoring[item.key] === color
                                                                 ? color === 'verde' ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-600/20'
                                                                     : color === 'amarillo' ? 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/20'
                                                                         : 'bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20'
-                                                                : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
+                                                                : 'bg-card border-border text-muted-foreground hover:border-border'
                                                             }`}
                                                     >
                                                         {color}
-                                                    </button>
+                                                    </Button>
                                                 ))}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                                
-                                <div className="mt-10 p-8 bg-slate-900 rounded-[32px] text-white flex flex-col md:flex-row items-center justify-between shadow-2xl shadow-indigo-900/40">
+
+                                <div className="admission-score mt-10 p-8 bg-primary rounded-[32px] text-white flex flex-col md:flex-row items-center justify-between shadow-2xl shadow-indigo-900/40">
                                     <div className="text-center md:text-left mb-6 md:mb-0">
                                         <h4 className="text-xl font-black tracking-tight">Evaluación de Admisión</h4>
-                                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">{Object.keys(scoring).length} de {SCORING_ITEMS.length} métricas completadas</p>
+                                        <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest mt-1">{Object.keys(scoring).length} de {SCORING_ITEMS.length} métricas completadas</p>
                                     </div>
                                     <div className="text-center md:text-right">
                                         {scoreLabel ? (
                                             <>
-                                                <span className={`block text-5xl font-black leading-none ${scoreLabel.color.replace('text-', 'text-indigo-400')}`}>{totalScore} pts</span>
+                                                <span className="block text-5xl font-black leading-none text-primary-foreground">{totalScore} pts</span>
                                                 <span className={`inline-block mt-3 px-4 py-1.5 ${scoreLabel.bg} ${scoreLabel.color} rounded-full text-[10px] font-black uppercase tracking-widest`}>
                                                     {scoreLabel.label}
                                                 </span>
                                             </>
                                         ) : (
-                                            <span className="text-slate-500 text-sm font-bold">Pendiente de evaluación</span>
+                                            <span className="text-muted-foreground text-sm font-bold">Pendiente de evaluación</span>
                                         )}
                                     </div>
                                 </div>
@@ -615,10 +619,10 @@ const CreateCase = () => {
                                         studioUsers={studioUsers}
                                     />
                                 ))}
-                                {usersError && <p role="alert" className="col-span-full text-sm text-red-600">{usersError}</p>}
+                                {usersError && <p role="alert" className="col-span-full text-sm text-status-red">{usersError}</p>}
                             </div>
                         )}
-                        
+
                         {/* ── Fallback for FODA/Timeline if not mapped to standard fields ── */}
                         {currentSection?.type === 'foda' && !currentSection.fields && (
                             <div className="grid grid-cols-1 gap-6">
@@ -630,38 +634,38 @@ const CreateCase = () => {
                         )}
                     </div>
                 </div>
-            </div>
+            </Card>
 
             {/* Navigation Buttons */}
             <div className="flex items-center justify-between">
-                <button
+                <Button variant="legacy" size="legacy"
                     onClick={() => {
                         if (currentIndex > 0) setActiveSectionId(sections[currentIndex - 1].id);
                     }}
                     disabled={currentIndex <= 0}
-                    className="flex items-center space-x-2 px-6 py-3 border border-slate-200 rounded-2xl font-bold text-sm text-slate-600 disabled:opacity-30 hover:bg-slate-50 transition-all"
+                    className="flex items-center space-x-2 px-6 py-3 border border-border rounded-2xl font-bold text-sm text-secondary-foreground disabled:opacity-30 hover:bg-background transition-all"
                 >
                     <ArrowLeft size={18} />
                     <span>Anterior</span>
-                </button>
+                </Button>
                 <div className="hidden sm:flex items-center space-x-2">
                     {sections.map((s) => (
-                        <div 
-                            key={s.id} 
-                            className={`w-2 h-2 rounded-full transition-all duration-300 ${activeSectionId === s.id ? 'w-8 bg-indigo-600' : 'bg-slate-200'}`}
+                        <div
+                            key={s.id}
+                            className={`w-2 h-2 rounded-full transition-all duration-300 ${activeSectionId === s.id ? 'w-8 bg-indigo-600' : 'bg-secondary'}`}
                         ></div>
                     ))}
                 </div>
-                <button
+                <Button variant="legacy" size="legacy"
                     onClick={() => {
                         if (currentIndex < sections.length - 1) setActiveSectionId(sections[currentIndex + 1].id);
                     }}
                     disabled={currentIndex >= sections.length - 1}
-                    className="flex items-center space-x-2 px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold text-sm disabled:opacity-30 hover:bg-slate-800 transition-all shadow-lg"
+                    className="flex items-center space-x-2 px-8 py-3 bg-primary text-white rounded-2xl font-bold text-sm disabled:opacity-30 hover:bg-primary transition-all shadow-lg"
                 >
                     <span>Siguiente</span>
                     <ArrowRight size={18} />
-                </button>
+                </Button>
             </div>
         </div>
     );

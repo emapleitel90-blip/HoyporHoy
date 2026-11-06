@@ -1,7 +1,11 @@
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
+import { Label } from '../components/ui/label';
+import { Input } from '../components/ui/input';
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
-import { 
+import {
     Save, RotateCcw,
     ChevronRight, Plus, Trash2,
     Type, ListChecks, Activity, Layout as LayoutIcon,
@@ -98,7 +102,7 @@ const Settings = () => {
     };
 
     const updateSection = (id, field, value) => {
-        const newSections = config.sections.map(s => 
+        const newSections = config.sections.map(s =>
             s.id === id ? { ...s, [field]: value } : s
         );
         setConfig({ ...config, sections: newSections });
@@ -107,7 +111,7 @@ const Settings = () => {
     const handleAddItem = (sectionId) => {
         const newItem = prompt('Ingresa el nombre del nuevo elemento:');
         if (!newItem) return;
-        
+
         const newSections = config.sections.map(s => {
             if (s.id === sectionId) {
                 return { ...s, items: [...(s.items || []), newItem] };
@@ -131,17 +135,17 @@ const Settings = () => {
 
     if (loading) return (
         <div role="status" aria-label="Cargando configuración" className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ring"></div>
         </div>
     );
 
     if (error || !config) return (
         <div role="alert" className="bg-red-50 border border-red-200 rounded-2xl p-6 space-y-4">
-            <h2 className="text-lg font-bold text-slate-900">Configuración del Sistema</h2>
-            <p className="text-red-700">{error || 'La configuración no está disponible.'}</p>
-            <button onClick={() => fetchConfig()} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold">
+            <h2 className="text-lg font-bold text-foreground">Configuración del Sistema</h2>
+            <p className="text-status-red">{error || 'La configuración no está disponible.'}</p>
+            <Button variant="legacy" size="legacy" onClick={() => fetchConfig()} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold">
                 Reintentar
-            </button>
+            </Button>
         </div>
     );
 
@@ -152,64 +156,64 @@ const Settings = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Configuración del Sistema</h2>
-                    <p className="text-slate-500 font-medium">Gestiona los 13 módulos de admisión y sus contenidos.</p>
+                    <h2 className="text-3xl font-black text-foreground tracking-tighter">Configuración del Sistema</h2>
+                    <p className="text-muted-foreground font-medium">Gestiona los 13 módulos de admisión y sus contenidos.</p>
                 </div>
                 <div className="flex items-center space-x-3">
-                    <button 
+                    <Button variant="legacy" size="legacy"
                         onClick={handleReset}
                         disabled={busy}
-                        className="flex items-center space-x-2 bg-white border border-slate-200 text-slate-600 px-5 py-2.5 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-all"
+                        className="flex items-center space-x-2 bg-card border border-border text-secondary-foreground px-5 py-2.5 rounded-2xl font-bold text-sm hover:bg-background transition-all"
                     >
                         <RotateCcw size={18} />
                         <span>Restablecer</span>
-                    </button>
-                    <button 
+                    </Button>
+                    <Button variant="legacy" size="legacy"
                         onClick={handleSave}
                         disabled={busy}
                         className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-2xl font-bold text-sm shadow-lg shadow-indigo-600/20 transition-all hover:scale-105"
                     >
                         <Save size={18} />
                         <span>Guardar Cambios</span>
-                    </button>
+                    </Button>
                 </div>
             </div>
 
             {config.sections.length === 0 && (
-                <p role="status" className="text-slate-600">No hay módulos configurados. Podés restablecer los valores por defecto.</p>
+                <p role="status" className="text-secondary-foreground">No hay módulos configurados. Podés restablecer los valores por defecto.</p>
             )}
 
             <fieldset disabled={busy} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 {/* Sidebar: Section List */}
                 <div className="lg:col-span-4 space-y-2">
-                    <div className="bg-white rounded-[24px] border border-slate-200 p-4 shadow-sm">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 px-2">Módulos del Formulario</p>
+                    <Card className="bg-card rounded-[24px] border border-border p-4 shadow-sm">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-4 px-2">Módulos del Formulario</p>
                         <div className="space-y-1">
                             {config.sections.map((section) => (
-                                <button
+                                <Button variant="legacy" size="legacy"
                                     key={section.id}
                                     onClick={() => setActiveSectionId(section.id)}
                                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${
                                         activeSectionId === section.id
-                                            ? 'bg-indigo-50 text-indigo-700 border-indigo-100 shadow-sm'
-                                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 border-transparent'
+                                            ? 'bg-indigo-50 text-link border-ring shadow-sm'
+                                            : 'text-muted-foreground hover:bg-background hover:text-foreground border-transparent'
                                     } border`}
                                 >
                                     <div className="flex items-center space-x-3">
-                                        {section.type === 'checklist' ? <ListChecks size={18} /> : 
-                                         section.type === 'scoring' ? <Activity size={18} /> : 
+                                        {section.type === 'checklist' ? <ListChecks size={18} /> :
+                                         section.type === 'scoring' ? <Activity size={18} /> :
                                          <LayoutIcon size={18} />}
                                         <span className="text-sm font-bold truncate">{section.title}</span>
                                     </div>
                                     {activeSectionId === section.id && <ChevronRight size={14} />}
-                                </button>
+                                </Button>
                             ))}
                         </div>
-                    </div>
+                    </Card>
 
                     <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100 flex items-start space-x-3">
-                        <AlertCircle className="text-amber-500 flex-shrink-0" size={18} />
-                        <p className="text-xs text-amber-700 font-medium leading-relaxed">
+                        <AlertCircle className="text-status-amber flex-shrink-0" size={18} />
+                        <p className="text-xs text-status-amber font-medium leading-relaxed">
                             Los cambios realizados aquí afectarán a todos los nuevos casos creados a partir de ahora.
                         </p>
                     </div>
@@ -218,30 +222,30 @@ const Settings = () => {
                 {/* Main: Section Editor */}
                 <div className="lg:col-span-8">
                     {activeSection && (
-                        <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden animate-in slide-in-from-right-4 duration-300">
-                            <div className="p-8 border-b border-slate-100 bg-slate-50/30">
+                        <Card className="bg-card rounded-[32px] border border-border shadow-sm overflow-hidden animate-in slide-in-from-right-4 duration-300">
+                            <div className="p-8 border-b border-border bg-background/30">
                                 <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">{activeSection.title}</h3>
+                                    <h3 className="text-2xl font-black text-foreground tracking-tight">{activeSection.title}</h3>
                                     <div className="flex items-center space-x-2">
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${activeSection.enabled ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${activeSection.enabled ? 'bg-emerald-50 text-status-emerald' : 'bg-muted text-muted-foreground'}`}>
                                             {activeSection.enabled ? 'Habilitado' : 'Deshabilitado'}
                                         </span>
-                                        <button 
+                                        <Button variant="legacy" size="legacy"
                                             onClick={() => updateSection(activeSection.id, 'enabled', !activeSection.enabled)}
-                                            className="text-xs font-bold text-indigo-600 hover:underline"
+                                            className="text-xs font-bold text-link hover:underline"
                                         >
                                             Cambiar estado
-                                        </button>
+                                        </Button>
                                     </div>
                                 </div>
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Descripción del Módulo</label>
-                                        <input 
-                                            type="text" 
+                                        <Label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">Descripción del Módulo</Label>
+                                        <Input
+                                            type="text"
                                             value={activeSection.description || ''}
                                             onChange={(e) => updateSection(activeSection.id, 'description', e.target.value)}
-                                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                            className="w-full bg-card border border-border rounded-xl px-4 py-2.5 text-sm font-semibold text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-all"
                                         />
                                     </div>
                                 </div>
@@ -251,58 +255,58 @@ const Settings = () => {
                                 {activeSection.type === 'checklist' ? (
                                     <div className="space-y-6">
                                         <div className="flex items-center justify-between">
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Elementos del Checklist</label>
-                                            <button 
+                                            <Label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest">Elementos del Checklist</Label>
+                                            <Button variant="legacy" size="legacy"
                                                 onClick={() => handleAddItem(activeSection.id)}
-                                                className="flex items-center space-x-1.5 text-indigo-600 hover:text-indigo-700 font-bold text-xs"
+                                                className="flex items-center space-x-1.5 text-link hover:text-link font-bold text-xs"
                                             >
                                                 <Plus size={14} />
                                                 <span>Agregar Elemento</span>
-                                            </button>
+                                            </Button>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                             {activeSection.items?.map((item, idx) => (
-                                                <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl group hover:border-indigo-200 transition-colors">
-                                                    <span className="text-sm font-semibold text-slate-700">{item}</span>
-                                                    <button 
+                                                <div key={idx} className="flex items-center justify-between p-3 bg-background border border-border rounded-xl group hover:border-ring transition-colors">
+                                                    <span className="text-sm font-semibold text-foreground">{item}</span>
+                                                    <Button variant="legacy" size="legacy"
                                                         onClick={() => handleRemoveItem(activeSection.id, idx)}
-                                                        className="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                                        className="text-muted-foreground hover:text-status-red transition-colors opacity-0 group-hover:opacity-100"
                                                     >
                                                         <Trash2 size={16} />
-                                                    </button>
+                                                    </Button>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
                                 ) : activeSection.type === 'standard' ? (
                                     <div className="space-y-6">
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Campos Definidos</label>
+                                        <Label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-4">Campos Definidos</Label>
                                         <div className="space-y-3">
                                             {activeSection.fields?.map((field, idx) => (
-                                                <div key={idx} className="flex items-center p-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
-                                                    <div className="p-2 bg-slate-100 rounded-lg mr-4">
-                                                        {field.type === 'select' ? <ListChecks size={18} className="text-slate-500" /> : <Type size={18} className="text-slate-500" />}
+                                                <Card key={idx} className="flex items-center p-4 bg-card border border-border rounded-2xl shadow-sm">
+                                                    <div className="p-2 bg-muted rounded-lg mr-4">
+                                                        {field.type === 'select' ? <ListChecks size={18} className="text-muted-foreground" /> : <Type size={18} className="text-muted-foreground" />}
                                                     </div>
                                                     <div className="flex-1">
-                                                        <p className="text-sm font-bold text-slate-900">{field.label}</p>
-                                                        <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{field.type} • {field.required ? 'Obligatorio' : 'Opcional'}</p>
+                                                        <p className="text-sm font-bold text-foreground">{field.label}</p>
+                                                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{field.type} • {field.required ? 'Obligatorio' : 'Opcional'}</p>
                                                     </div>
-                                                </div>
+                                                </Card>
                                             ))}
                                         </div>
-                                        <p className="text-xs text-slate-400 italic text-center mt-6">
+                                        <p className="text-xs text-muted-foreground italic text-center mt-6">
                                             Para añadir o quitar campos estructurales, consulta con soporte técnico de LyP.
                                         </p>
                                     </div>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center py-12 text-center">
-                                        <Activity size={48} className="text-slate-200 mb-4" />
-                                        <p className="text-slate-500 font-medium">Este módulo utiliza una lógica especializada ({activeSection.type}).</p>
-                                        <p className="text-xs text-slate-400 mt-1">El contenido se genera dinámicamente según las reglas de negocio de LyP.</p>
+                                        <Activity size={48} className="text-muted-foreground mb-4" />
+                                        <p className="text-muted-foreground font-medium">Este módulo utiliza una lógica especializada ({activeSection.type}).</p>
+                                        <p className="text-xs text-muted-foreground mt-1">El contenido se genera dinámicamente según las reglas de negocio de LyP.</p>
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </Card>
                     )}
                 </div>
             </fieldset>

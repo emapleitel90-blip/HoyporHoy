@@ -1,3 +1,8 @@
+import { Button } from './ui/button';
+import { Label } from './ui/label';
+import { Input } from './ui/input';
+import { Textarea } from './ui/textarea';
+import { NativeSelect } from './ui/native-select';
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { api } from '../config/api';
@@ -59,19 +64,19 @@ function WritingEditor({ caseId, writing, seed, canWrite, busy, onBusyChange, on
         } finally { submitting.current = false; onBusyChange(false); }
     };
     if (!canWrite) return <div className="border rounded-lg p-4 space-y-2">
-        <p role="alert">Tu cuenta ya no puede guardar escritos.</p><button type="button" onClick={onClose} disabled={busy}>Cerrar edición del escrito</button>
+        <p role="alert">Tu cuenta ya no puede guardar escritos.</p><Button variant="legacy" size="legacy" type="button" onClick={onClose} disabled={busy}>Cerrar edición del escrito</Button>
     </div>;
-    return <form onSubmit={submit} className="border border-indigo-200 rounded-lg p-4 grid gap-3">
+    return <form onSubmit={submit} className="border border-ring rounded-lg p-4 grid gap-3">
         <h3 className="font-semibold">{writing ? 'Nueva versión del escrito' : 'Nuevo escrito'}</h3>
         {writing && <p>Partís de la versión guardada {initial.current.number}. La versión anterior se conserva.</p>}
-        <label>Título del escrito<input required maxLength={200} disabled={busy} value={draft.title} onChange={event => change('title', event.target.value)} className="block border rounded p-2 w-full" /></label>
-        <label>Texto del escrito<textarea required maxLength={20000} rows={12} disabled={busy} value={draft.content} onChange={event => change('content', event.target.value)} className="block border rounded p-2 w-full font-serif" /></label>
-        <p className="text-sm text-gray-600">{draft.content.length.toLocaleString('es-AR')} de 20.000 caracteres. Se conservan los saltos de línea y las sangrías del texto plano.</p>
-        <label>{writing ? 'Motivo de la nueva versión' : 'Nota inicial (opcional)'}<textarea required={!!writing} maxLength={2000} disabled={busy} value={draft.notes} onChange={event => change('notes', event.target.value)} className="block border rounded p-2 w-full" /></label>
-        {error && <p role="alert" className="text-red-700">{error}</p>}
-        {conflict && <button type="button" disabled={busy} className="underline" onClick={onDiscardAndReload}>Descartar edición y actualizar escritos</button>}
-        <button disabled={busy} className="bg-indigo-600 text-white rounded p-2">{busy ? 'Guardando escrito…' : writing ? 'Guardar nueva versión' : 'Guardar escrito'}</button>
-        <button type="button" disabled={busy} onClick={onClose}>Cancelar edición del escrito</button>
+        <Label>Título del escrito<Input required maxLength={200} disabled={busy} value={draft.title} onChange={event => change('title', event.target.value)} className="block border rounded p-2 w-full" /></Label>
+        <Label>Texto del escrito<Textarea required maxLength={20000} rows={12} disabled={busy} value={draft.content} onChange={event => change('content', event.target.value)} className="block border rounded p-2 w-full font-serif" /></Label>
+        <p className="text-sm text-secondary-foreground">{draft.content.length.toLocaleString('es-AR')} de 20.000 caracteres. Se conservan los saltos de línea y las sangrías del texto plano.</p>
+        <Label>{writing ? 'Motivo de la nueva versión' : 'Nota inicial (opcional)'}<Textarea required={!!writing} maxLength={2000} disabled={busy} value={draft.notes} onChange={event => change('notes', event.target.value)} className="block border rounded p-2 w-full" /></Label>
+        {error && <p role="alert" className="text-status-red">{error}</p>}
+        {conflict && <Button variant="legacy" size="legacy" type="button" disabled={busy} className="underline" onClick={onDiscardAndReload}>Descartar edición y actualizar escritos</Button>}
+        <Button variant="legacy" size="legacy" disabled={busy} className="bg-indigo-600 text-white rounded p-2">{busy ? 'Guardando escrito…' : writing ? 'Guardar nueva versión' : 'Guardar escrito'}</Button>
+        <Button variant="legacy" size="legacy" type="button" disabled={busy} onClick={onClose}>Cancelar edición del escrito</Button>
     </form>;
 }
 
@@ -83,7 +88,7 @@ function WritingComparison({ writing, busy }) {
     const [loading, setLoading] = useState(false);
     const generation = useRef(0);
     useEffect(() => () => { ++generation.current; }, []);
-    if (writing.versions.length < 2) return <p className="text-sm text-gray-600">La comparación estará disponible al guardar otra versión.</p>;
+    if (writing.versions.length < 2) return <p className="text-sm text-secondary-foreground">La comparación estará disponible al guardar otra versión.</p>;
     const compare = async () => {
         if (busy || loading || first === second) return;
         const current = ++generation.current;
@@ -104,17 +109,17 @@ function WritingComparison({ writing, busy }) {
     return <div className="border rounded-lg p-4 space-y-3">
         <h3 className="font-semibold">Comparar versiones guardadas</h3>
         <div className="flex flex-wrap gap-3">
-            <label>Primera versión a comparar<select className="block border rounded p-2" disabled={busy || loading} value={first} onChange={event => { setFirst(event.target.value); setResult(null); }}>
+            <Label>Primera versión a comparar<NativeSelect className="block border rounded p-2" disabled={busy || loading} value={first} onChange={event => { setFirst(event.target.value); setResult(null); }}>
                 {writing.versions.map(version => <option key={version.id} value={version.number}>Versión {version.number}</option>)}
-            </select></label>
-            <label>Segunda versión a comparar<select className="block border rounded p-2" disabled={busy || loading} value={second} onChange={event => { setSecond(event.target.value); setResult(null); }}>
+            </NativeSelect></Label>
+            <Label>Segunda versión a comparar<NativeSelect className="block border rounded p-2" disabled={busy || loading} value={second} onChange={event => { setSecond(event.target.value); setResult(null); }}>
                 {writing.versions.map(version => <option key={version.id} value={version.number}>Versión {version.number}</option>)}
-            </select></label>
-            <button type="button" disabled={busy || loading || first === second} className="underline" onClick={compare}>Comparar versiones</button>
+            </NativeSelect></Label>
+            <Button variant="legacy" size="legacy" type="button" disabled={busy || loading || first === second} className="underline" onClick={compare}>Comparar versiones</Button>
         </div>
         {first === second && <p>Elegí dos versiones distintas.</p>}
         {loading && <p role="status">Cargando comparación…</p>}
-        {error && <p role="alert" className="text-red-700">{error}</p>}
+        {error && <p role="alert" className="text-status-red">{error}</p>}
         {result && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {result.map(version => <article key={version.id} className="min-w-0 border rounded p-3 space-y-2">
                 <h4 className="font-medium">Comparación · versión {version.number}</h4>
@@ -207,39 +212,39 @@ function Writings({ caseId }) {
         } catch (err) { setDownloadError(await errorMessage(err, 'No se pudo descargar el Word de la versión guardada.')); }
         finally { setDownloading(false); }
     };
-    return <section className="bg-white border rounded-xl p-6 my-6 space-y-4">
+    return <section className="bg-card border rounded-xl p-6 my-6 space-y-4">
         <div className="flex flex-wrap gap-3 justify-between"><h2 className="font-semibold">Escritos y versiones</h2>
-            <button type="button" disabled={busy} className="underline" onClick={refresh}>Actualizar escritos</button></div>
-        <p className="text-sm text-gray-600">Guardá el texto de trabajo y consultá cada versión con su autor y fecha. Guardar o exportar un escrito no significa aprobarlo ni presentarlo.</p>
+            <Button variant="legacy" size="legacy" type="button" disabled={busy} className="underline" onClick={refresh}>Actualizar escritos</Button></div>
+        <p className="text-sm text-secondary-foreground">Guardá el texto de trabajo y consultá cada versión con su autor y fecha. Guardar o exportar un escrito no significa aprobarlo ni presentarlo.</p>
         <WritingTemplateLibrary caseId={caseId} canManage={['LAWYER','ADMIN','SUPER_ADMIN'].includes(user?.role)} disabled={busy||!!editor||!canWrite}
             sourceVersion={detail&&!detailLoading&&!detailError&&detail.id===selectedId&&detail.selectedVersion.number===(selectedNumber||detail.currentVersion)?detail.selectedVersion:null} onUse={seed=>{
             ++detailGeneration.current;setSelection(null);setDetail(null);setDetailLoading(false);setDetailError('');setDownloadError('');setEditor({writing:null,seed});setNotice('Modelo preparado. Revisá el texto antes de guardar el escrito.');
         }}/>
-        {canWrite && <button type="button" disabled={busy || !!editor} className="underline" onClick={() => {
+        {canWrite && <Button variant="legacy" size="legacy" type="button" disabled={busy || !!editor} className="underline" onClick={() => {
             ++detailGeneration.current; setSelection(null); setDetail(null); setDetailLoading(false);
             setDetailError(''); setDownloadError(''); setEditor({ writing: null }); setNotice('');
-        }}>Nuevo escrito</button>}
+        }}>Nuevo escrito</Button>}
         {listLoading && <p role="status">Cargando escritos…</p>}
-        {listError && <p role="alert" className="text-red-700">{listError}</p>}
+        {listError && <p role="alert" className="text-status-red">{listError}</p>}
         {!listLoading && !listError && !list.length && <p>No hay escritos guardados.</p>}
         {!!list.length && <ul className="space-y-2" aria-label="Escritos del expediente">{list.map(item => <li key={item.id}>
-            <button type="button" disabled={busy || !!editor} className="text-left underline" onClick={() => { setSelection({ id: item.id, number: null }); setNotice(''); }}>
+            <Button variant="legacy" size="legacy" type="button" disabled={busy || !!editor} className="text-left underline" onClick={() => { setSelection({ id: item.id, number: null }); setNotice(''); }}>
                 {item.latestVersion.title} · versión {item.currentVersion}
-            </button>
+            </Button>
         </li>)}</ul>}
-        {detailLoading ? <p role="status">Cargando versión del escrito…</p> : detailError ? <p role="alert" className="text-red-700">{detailError}</p> : detail && <div className="space-y-4">
-            <label>Versión guardada<select className="block border rounded p-2" disabled={busy || !!editor} value={detail.selectedVersion.number} onChange={event => setSelection({ id: detail.id, number: Number(event.target.value) })}>
+        {detailLoading ? <p role="status">Cargando versión del escrito…</p> : detailError ? <p role="alert" className="text-status-red">{detailError}</p> : detail && <div className="space-y-4">
+            <Label>Versión guardada<NativeSelect className="block border rounded p-2" disabled={busy || !!editor} value={detail.selectedVersion.number} onChange={event => setSelection({ id: detail.id, number: Number(event.target.value) })}>
                 {detail.versions.map(version => <option key={version.id} value={version.number}>Versión {version.number}{version.number === detail.currentVersion ? ' · última' : ''}</option>)}
-            </select></label>
+            </NativeSelect></Label>
             <article className="border rounded-lg p-4 space-y-3">
                 <h3 className="font-semibold">{detail.selectedVersion.title}</h3>
                 <p className="text-sm">Versión guardada {detail.selectedVersion.number} · {time(detail.selectedVersion.createdAt)} · {detail.selectedVersion.createdByName}</p>
                 {detail.selectedVersion.notes && <p className="whitespace-pre-wrap">Motivo o nota: {detail.selectedVersion.notes}</p>}
                 <pre className="whitespace-pre-wrap break-words font-serif">{detail.selectedVersion.content}</pre>
-                <button type="button" disabled={busy || downloading} className="underline" onClick={download}>{downloading ? 'Preparando Word…' : 'Descargar Word de versión ' + detail.selectedVersion.number + ' guardada'}</button>
-                {downloadError && <p role="alert" className="text-red-700">{downloadError}</p>}
+                <Button variant="legacy" size="legacy" type="button" disabled={busy || downloading} className="underline" onClick={download}>{downloading ? 'Preparando Word…' : 'Descargar Word de versión ' + detail.selectedVersion.number + ' guardada'}</Button>
+                {downloadError && <p role="alert" className="text-status-red">{downloadError}</p>}
             </article>
-            {canWrite && <button type="button" disabled={busy || !!editor} className="underline" onClick={() => { setEditor({ writing: detail }); setNotice(''); }}>Crear nueva versión desde la seleccionada</button>}
+            {canWrite && <Button variant="legacy" size="legacy" type="button" disabled={busy || !!editor} className="underline" onClick={() => { setEditor({ writing: detail }); setNotice(''); }}>Crear nueva versión desde la seleccionada</Button>}
             <details><summary className="cursor-pointer underline">Historial de versiones del escrito</summary>
                 <ol className="space-y-2 mt-2">{detail.versions.map(version => <li key={version.id} className="border rounded p-3">
                     <p>Versión {version.number} · {version.title}</p><p>{time(version.createdAt)} · {version.createdByName}</p>
@@ -250,6 +255,6 @@ function Writings({ caseId }) {
         </div>}
         {editor && <WritingEditor caseId={caseId} writing={editor.writing} seed={editor.seed} canWrite={canWrite} busy={busy} onBusyChange={changeBusy} onSaved={saved}
             onClose={() => setEditor(null)} onDiscardAndReload={() => { setEditor(null); refresh(); }} />}
-        {notice && <p role="status" className="text-green-700">{notice}</p>}
+        {notice && <p role="status" className="text-status-green">{notice}</p>}
     </section>;
 }

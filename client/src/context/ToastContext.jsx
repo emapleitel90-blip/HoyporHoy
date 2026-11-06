@@ -1,3 +1,4 @@
+import { Button } from '../components/ui/button';
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 
@@ -28,17 +29,17 @@ export const ToastProvider = ({ children }) => {
     };
 
     const icons = {
-        success: <CheckCircle className="w-5 h-5 text-green-500" />,
-        error: <AlertCircle className="w-5 h-5 text-red-500" />,
-        info: <Info className="w-5 h-5 text-blue-500" />,
-        warning: <AlertTriangle className="w-5 h-5 text-yellow-500" />,
+        success: <CheckCircle className="w-5 h-5 text-status-green" />,
+        error: <AlertCircle className="w-5 h-5 text-status-red" />,
+        info: <Info className="w-5 h-5 text-link" />,
+        warning: <AlertTriangle className="w-5 h-5 text-status-yellow" />,
     };
 
     const bgColors = {
-        success: 'bg-green-50 border-green-200 text-green-800',
-        error: 'bg-red-50 border-red-200 text-red-800',
-        info: 'bg-blue-50 border-blue-200 text-blue-800',
-        warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
+        success: 'bg-green-50 border-green-200 text-status-green',
+        error: 'bg-red-50 border-red-200 text-status-red',
+        info: 'bg-blue-50 border-ring text-link',
+        warning: 'bg-yellow-50 border-yellow-200 text-status-yellow',
     };
 
     return (
@@ -56,12 +57,12 @@ export const ToastProvider = ({ children }) => {
                         <div className="ml-3 flex-1">
                             <p className="text-sm font-semibold">{toast.message}</p>
                         </div>
-                        <button
+                        <Button variant="legacy" size="legacy"
                             onClick={() => removeToast(toast.id)}
-                            className="ml-4 flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+                            className="ml-4 flex-shrink-0 text-muted-foreground hover:text-secondary-foreground transition-colors"
                         >
                             <X className="w-4 h-4" />
-                        </button>
+                        </Button>
                     </div>
                 ))}
             </div>
