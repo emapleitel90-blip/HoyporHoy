@@ -12,6 +12,7 @@ vi.mock('../components/ExpensePanel', () => ({ ExpensePanel: () => null }));
 vi.mock('../components/CaseFilePanel', () => ({ CaseFilePanel: () => null }));
 vi.mock('../components/JurisprudencePanel', () => ({ JurisprudencePanel: () => null }));
 vi.mock('../components/TaskPanel', () => ({ TaskPanel: () => null }));
+vi.mock('../components/NextActionPanel', () => ({ NextActionPanel: () => null }));
 vi.mock('../components/CaseProgressSummary', () => ({ CaseProgressSummary: ({ refreshVersion }) => <p>Revisión del resumen {refreshVersion}</p> }));
 vi.mock('../components/FollowUpPanel', () => ({ FollowUpPanel: ({ onChanged }) => <button onClick={onChanged}>Confirmar seguimiento simulado</button> }));
 vi.mock('../components/FeePanel', () => ({ FeePanel: ({ onChanged }) => <button onClick={onChanged}>Confirmar honorarios simulados</button> }));
@@ -44,6 +45,20 @@ describe('Carga del expediente que contiene los escritos', () => {
         expect(screen.getByText('Escritos del expediente b')).toBeTruthy();
         expect(screen.queryByRole('heading', { name: 'Cliente a' })).toBeNull();
         expect(screen.queryByText('No tenés permisos para acceder a este expediente.')).toBeNull();
+    });
+
+    it('muestra el mismo día que se registró para una prescripción sin hora', async () => {
+        axios.get.mockResolvedValueOnce({ data: {
+            ...caseData('a'),
+            priority: 'URGENT',
+            details: JSON.stringify({ urgencia: 'Baja', fechaPrescripcion: '2027-01-01', proximaAudiencia: '2027-01-02' }),
+        } });
+        open();
+        await screen.findByText('Prescripción estimada');
+        expect(screen.getByText('Prioridad urgente')).toBeTruthy();
+        expect(screen.getByText('1/1/2027', { selector: 'dd' })).toBeTruthy();
+        expect(screen.getByText('2/1/2027', { selector: 'dd' })).toBeTruthy();
+        expect(screen.queryByText('31/12/2026', { selector: 'dd' })).toBeNull();
     });
 });
 

@@ -1,6 +1,8 @@
 import express from 'express';
 import { register, login, getMe, changePassword } from '../controllers/authController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect, superAdmin } from '../middleware/authMiddleware.js';
+import { accountLinkLimit, loginNetworkLimit, loginAccountLimit, registrationLimit } from '../middleware/authRateLimits.js';
+import { issueRecoveryLink, redeemAccountLink } from '../controllers/accountAccessController.js';
 import { body, validationResult } from 'express-validator';
 
 const router = express.Router();
@@ -13,18 +15,29 @@ const validate = (req, res, next) => {
     next();
 };
 
-router.post('/register', [
+router.post('/register', registrationLimit, [
     body('name', 'El nombre es requerido').isString().bail().trim().notEmpty(),
     body('email', 'Ingresá un email válido').isString().bail().trim().isEmail(),
     body('password', 'La contraseña debe tener al menos 6 caracteres').isString().bail().isLength({ min: 6 }),
 ], validate, register);
 
-router.post('/login', [
+router.post('/login', loginNetworkLimit, [
     body('email', 'Ingresá un email válido').isString().bail().trim().isEmail(),
     body('password', 'La contraseña es requerida').isString().bail().notEmpty(),
-], validate, login);
+], validate, loginAccountLimit, login);
 
 router.get('/me', protect, getMe);
+
+router.post('/recovery-links', protect, superAdmin, [
+    body('email', 'Ingresá un email válido').isString().bail().trim().isEmail(),
+], validate, issueRecoveryLink);
+
+router.post('/account-links/redeem', accountLinkLimit, [
+    body('token', 'Ingresá un enlace válido').isString().bail().matches(/^[A-Za-z0-9_-]{43}$/),
+    body('password', 'Elegí una contraseña de al menos 12 caracteres').isString().bail().isLength({ min: 12 })
+        .bail().custom(value => Buffer.byteLength(value, 'utf8') <= 72)
+        .withMessage('La contraseña supera el tamaño permitido. Elegí una más corta.'),
+], validate, redeemAccountLink);
 
 router.put('/change-password', [
     protect,

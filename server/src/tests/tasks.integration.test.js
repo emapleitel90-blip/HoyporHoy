@@ -52,11 +52,14 @@ beforeAll(async () => {
     await runSql(baseline);
     for (const id of ['a', 'b']) await prisma.studio.create({ data: { id, name: `Estudio ${id}`, cuit: `test-${id}` } });
     for (const user of people) await prisma.user.create({ data: { ...user, name: user.id, email: `${user.id}@test.invalid`, password: 'unused' } });
+    await runSql(readFileSync('prisma/migrations/20261016000000_add_tasks_review/migration.sql', 'utf8'));
+    await runSql(readFileSync('prisma/migrations/20261028050000_task_writing_versions/migration.sql', 'utf8'));
     for (const [id, studioId, createdById] of [['case-a', 'a', 'admin'], ['case-b', 'b', 'other'], ['solo-case', null, 'solo']]) {
         await prisma.case.create({ data: { id, title: id, caseNumber: id, studioId, createdById } });
     }
-    await runSql(readFileSync('prisma/migrations/20261016000000_add_tasks_review/migration.sql', 'utf8'));
-    await runSql(readFileSync('prisma/migrations/20261028050000_task_writing_versions/migration.sql', 'utf8'));
+    await prisma.$executeRawUnsafe(`INSERT INTO "Task" ("id", "title", "caseId", "assigneeId", "reviewerId", "createdById", "updatedAt", "status") VALUES ('before-agenda', 'Tarea anterior al cronograma', 'case-a', 'operator', 'lawyer', 'admin', CURRENT_TIMESTAMP, 'APPROVED')`);
+    await prisma.$executeRawUnsafe(`INSERT INTO "TaskEvent" ("id", "taskId", "userId", "action", "toStatus") VALUES ('before-agenda-event', 'before-agenda', 'admin', 'CREATED', 'PENDING')`);
+    await runSql(readFileSync('prisma/migrations/20261106000000_agenda_tasks/migration.sql', 'utf8'));
     app = express();
     app.use(express.json());
     app.use('/api/tasks', (await import('../routes/taskRoutes.js')).default);
@@ -125,6 +128,9 @@ describe('Tareas: migración y ciclo de revisión con SQLite real', () => {
     it('conserva los expedientes y usuarios existentes al migrar', async () => {
         expect(await prisma.case.count()).toBe(3);
         expect(await prisma.user.count()).toBe(8);
+        const existing = await prisma.task.findUnique({ where: { id: 'before-agenda' }, include: { events: true } });
+        expect(existing).toMatchObject({ title: 'Tarea anterior al cronograma', caseId: 'case-a', reviewerId: 'lawyer', status: 'APPROVED', priority: 'MEDIUM' });
+        expect(existing.events).toHaveLength(1);
     });
 
     it('exige autenticación y rechaza cuentas inactivas', async () => {
@@ -258,9 +264,11 @@ describe('Asignación de responsables del expediente', () => {
         expect(created.body.studioId).toBe('a');
         expect(created.body.assignedLawyer.id).toBe('lawyer');
         const url = `/api/cases/${created.body.id}`;
-        expect((await auth('put', url, 'admin', { title: 'Editado' })).body.assignedLawyerId).toBe('lawyer');
-        expect((await auth('put', url, 'admin', { assignedLawyerId: null })).body.assignedLawyerId).toBeNull();
-        expect((await auth('put', url, 'admin', { assignedLawyerId: 'other' })).status).toBe(400);
+        const edited = await auth('put', url, 'admin', { title: 'Editado', version: created.body.editVersion });
+        expect(edited.body.assignedLawyerId).toBe('lawyer');
+        const unassigned = await auth('put', url, 'admin', { assignedLawyerId: null, version: edited.body.editVersion });
+        expect(unassigned.body.assignedLawyerId).toBeNull();
+        expect((await auth('put', url, 'admin', { assignedLawyerId: 'other', version: unassigned.body.editVersion })).status).toBe(400);
         expect((await auth('put', url, 'other', { assignedLawyerId: 'other' })).status).toBe(403);
     });
 
@@ -269,20 +277,21 @@ describe('Asignación de responsables del expediente', () => {
     });
 
     it('no asigna otro independiente ni un miembro de estudio a un expediente sin estudio', async () => {
+        const { editVersion: version } = await prisma.case.findUnique({ where: { id: 'solo-case' } });
         for (const assignedLawyerId of ['solo2', 'lawyer']) {
             expect((await auth('post', '/api/cases', 'solo', { title: 'Privado', assignedLawyerId })).status).toBe(400);
-            expect((await auth('put', '/api/cases/solo-case', 'super', { assignedLawyerId })).status).toBe(400);
+            expect((await auth('put', '/api/cases/solo-case', 'super', { assignedLawyerId, version })).status).toBe(400);
         }
-        expect((await auth('put', '/api/cases/solo-case', 'solo', { assignedLawyerId: 'solo' })).body.assignedLawyerId).toBe('solo');
+        expect((await auth('put', '/api/cases/solo-case', 'solo', { assignedLawyerId: 'solo', version })).body.assignedLawyerId).toBe('solo');
     });
 
     it('conserva una asignación histórica inactiva al editar sin reasignar', async () => {
         const record = await prisma.case.create({ data: {
             title: 'Asignación histórica', caseNumber: 'historic', studioId: 'a', createdById: 'admin', assignedLawyerId: 'inactive',
         } });
-        const response = await auth('put', `/api/cases/${record.id}`, 'admin', { title: 'Actualizado', assignedLawyerId: 'inactive' });
+        const response = await auth('put', `/api/cases/${record.id}`, 'admin', { title: 'Actualizado', assignedLawyerId: 'inactive', version: record.editVersion });
         expect(response.status).toBe(200);
         expect(response.body.assignedLawyerId).toBe('inactive');
-        expect((await auth('put', `/api/cases/${record.id}`, 'admin', { assignedLawyerId: '' })).body.assignedLawyerId).toBeNull();
+        expect((await auth('put', `/api/cases/${record.id}`, 'admin', { assignedLawyerId: '', version: response.body.editVersion })).body.assignedLawyerId).toBeNull();
     });
 });

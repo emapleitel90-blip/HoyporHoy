@@ -1,27 +1,31 @@
-name: LyP - Validación
+name: HoyporHoy - Validación beta
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, 'develop/**', 'codex/**']
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, 'develop/**', 'codex/**']
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: beta-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         node-version: [22.x, 24.x]
-    env:
-      DATABASE_URL: file:./ci.db
-      JWT_SECRET: ci-only-test-secret-not-for-production
     steps:
       - uses: actions/checkout@v4
+      - name: Identificar candidato
+        run: git show --no-patch --format=fuller HEAD
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
@@ -35,9 +39,6 @@ jobs:
       - name: Instalar cliente
         run: npm ci
         working-directory: client
-      - name: Generar cliente Prisma
-        run: npx --no-install prisma generate
-        working-directory: server
       - name: Revisar código del cliente
         run: npm run lint
         working-directory: client
@@ -53,6 +54,7 @@ jobs:
 
   audit-dependencies:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:

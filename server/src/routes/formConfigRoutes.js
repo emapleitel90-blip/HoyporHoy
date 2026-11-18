@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.route('/')
     .get(protect, getFormConfig)
+    .put(protect, updateFormConfig)
     .post(protect, updateFormConfig);
 
 router.post('/reset', protect, resetFormConfig);

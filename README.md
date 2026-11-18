@@ -65,10 +65,16 @@ Esta aplicación web fue desarrollada para **Lamberti & Pleitel** como sistema d
 Con las dependencias del servidor y del cliente instaladas, ejecutar desde la raíz:
 
 ```bash
-npm run lint
-npm test
-npm run build
+npm run verify:beta
 ```
+
+La verificación ejecuta ESLint, las suites completas de servidor y cliente y la compilación. El servidor genera un cliente Prisma aislado en un directorio descartable dentro de `server/node_modules/.cache`, con una base y una clave de sesión exclusivas de la ejecución. También admite filtros habituales, por ejemplo `npm --prefix server test -- src/tests/deadlines.integration.test.js`. Las pruebas se ejecutan con un trabajador.
+
+La suite incluye el despliegue de todas las migraciones sobre una base temporal vacía, su repetición con datos ficticios, la comprobación de referencias y la comparación con el esquema Prisma actual. El optimizador usa archivos temporales en sus pruebas y exige que estas indiquen un directorio explícito.
+
+El workflow de GitHub Actions se activa con cambios y solicitudes de revisión sobre `main`, `develop`, `develop/**` y `codex/**`. Registra el commit verificado y comprueba Node.js 22 y 24. Su resultado remoto queda pendiente hasta publicar los cambios de esta beta.
+
+El 17/11/2026 la verificación local con Node.js 24 aprobó 407 pruebas de servidor y 165 de interfaz, junto con ESLint y la compilación. La suite de servidor desplegó las 22 migraciones con Prisma sobre una base descartable, repitió el despliegue con datos ficticios y confirmó que coincide con el esquema actual.
 
 Las pruebas del servidor usan bases temporales. Las pruebas del cliente verifican la recuperación de Configuración, la importación real de CSV/XLS/XLSX, la navegación con sesión, los comprobantes de gastos y el circuito de honorarios. Los comprobantes usan el mismo almacenamiento privado de los expedientes; ver [la entrega de gastos](ENTREGA_COMPROBANTES_GASTOS.md) y [la entrega de pagos](ENTREGA_COMPROBANTES_PAGOS.md) para los estados anteriores y los reemplazos.
 
@@ -113,6 +119,8 @@ La configuración para incorporar más componentes se encuentra en `client/compo
 2. Conectar repositorio a Railway.
 3. Configurar variables de entorno en el panel de Railway.
 4. El backend y frontend se pueden desplegar como servicios separados o monorepo.
+
+Los límites de autenticación se guardan en memoria de cada proceso. Si el backend recibe tráfico de un proxy inverso, configurá `TRUSTED_PROXY_ADDRESSES` con las IP o redes CIDR exactas de los proxies administrados y verificá que el último proxy confiable sanee las cabeceras de origen. Confirmá en el entorno de despliegue que dos conexiones distintas tengan cupos separados. Si se usan varias réplicas, los cupos compartidos requieren un almacén común o un límite equivalente en el proxy.
 
 ---
 Desarrollado para LyP.

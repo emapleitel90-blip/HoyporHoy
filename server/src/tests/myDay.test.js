@@ -7,7 +7,16 @@ const mockUpdate = vi.fn();
 
 vi.mock('../utils/prismaClient.js', () => ({
     default: {
-        $transaction: callback => callback({deadline:{update:(...args)=>mockUpdate(...args)}}),
+        $transaction: callback => callback({
+            user: { findFirst: async ({ where }) => where.id === 'sa1'
+                ? { id: 'sa1', role: 'SUPER_ADMIN', studioId: null }
+                : { id: 'u1', role: 'LAWYER', studioId: 'studio-A' } },
+            deadline: {
+                findFirst: (...args) => mockFindFirst(...args),
+                updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+                findUnique: (...args) => mockUpdate(...args),
+            },
+        }),
         deadline: {
             findMany: (...args) => mockFindMany(...args),
             findFirst: (...args) => mockFindFirst(...args),
@@ -210,16 +219,13 @@ describe('PUT /api/deadlines/:id (Aislamiento multi-tenant)', () => {
         const req = {
             user: { id: 'u1', role: 'LAWYER', studioId: 'studio-A' },
             params: { id: 'd1' },
-            body: { isCompleted: true },
+            body: { isCompleted: true, version: 0 },
         };
         const res = buildRes();
 
         await updateDeadline(req, res, nextFn);
 
-        expect(res.status).toHaveBeenCalledWith(404);
-        expect(res.json).toHaveBeenCalledWith(
-            expect.objectContaining({ message: 'Plazo no encontrado' }),
-        );
+        expect(nextFn).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 404, message: 'Plazo no encontrado' }));
         expect(mockUpdate).not.toHaveBeenCalled();
     });
 
@@ -229,6 +235,7 @@ describe('PUT /api/deadlines/:id (Aislamiento multi-tenant)', () => {
             title: 'Test',
             dueDate: new Date(),
             isCompleted: false,
+            editVersion: 0,
             notes: null,
             case: { studioId: 'studio-A' },
         });
@@ -243,7 +250,7 @@ describe('PUT /api/deadlines/:id (Aislamiento multi-tenant)', () => {
         const req = {
             user: { id: 'u1', role: 'LAWYER', studioId: 'studio-A' },
             params: { id: 'd1' },
-            body: { isCompleted: true },
+            body: { isCompleted: true, version: 0 },
         };
         const res = buildRes();
 
@@ -260,6 +267,7 @@ describe('PUT /api/deadlines/:id (Aislamiento multi-tenant)', () => {
             title: 'Test',
             dueDate: new Date(),
             isCompleted: false,
+            editVersion: 0,
             notes: null,
             case: { studioId: 'studio-X' },
         });
@@ -274,7 +282,7 @@ describe('PUT /api/deadlines/:id (Aislamiento multi-tenant)', () => {
         const req = {
             user: { id: 'sa1', role: 'SUPER_ADMIN', studioId: null },
             params: { id: 'd1' },
-            body: { isCompleted: true },
+            body: { isCompleted: true, version: 0 },
         };
         const res = buildRes();
 

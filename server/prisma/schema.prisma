@@ -28,6 +28,7 @@ model User {
   name          String
   email         String         @unique
   password      String
+  sessionVersion Int           @default(0)
   role          String         @default("OPERATOR")
   studioId      String?
   lastLogin     DateTime?
@@ -43,11 +44,23 @@ model User {
   createdFollowUps FollowUp[] @relation("FollowUpCreator")
   followUpEvents FollowUpEvent[]
   notifications Notification[]
+  accessLink    AccountAccessLink?
   studio        Studio?        @relation(fields: [studioId], references: [id])
+}
+
+model AccountAccessLink {
+  userId         String   @id
+  tokenHash      String   @unique
+  purpose        String
+  expiresAt      DateTime
+  sessionVersion Int
+  studioId       String?
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Case {
   id               String          @id @default(uuid())
+  creationRequest  CaseCreationRequest?
   caseNumber       String          @unique
   title            String
   clientId         String?
@@ -61,8 +74,11 @@ model Case {
   studioId         String?
   createdById      String
   assignedLawyerId String?
+  nextActionId     String?         @unique
+  nextAction       Task?           @relation("CaseNextAction", fields: [nextActionId], references: [id], onDelete: SetNull)
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
+  editVersion      Int             @default(0)
   deletedAt        DateTime?
   assignedLawyer   User?           @relation("AssignedLawyer", fields: [assignedLawyerId], references: [id])
   createdBy        User            @relation("CreatedBy", fields: [createdById], references: [id])
@@ -79,6 +95,16 @@ model Case {
   writings         Writing[]
 }
 
+model CaseCreationRequest {
+  caseId      String @id
+  actorId     String
+  requestId   String
+  payloadHash String
+  case        Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([actorId, requestId])
+}
+
 model CaseFile {
   id        String   @id @default(uuid())
   name      String
@@ -91,14 +117,21 @@ model CaseFile {
 }
 
 model Deadline {
-  id          String   @id @default(uuid())
-  title       String
-  dueDate     DateTime
-  isCompleted Boolean  @default(false)
-  notes       String?
-  caseId      String
-  createdAt   DateTime @default(now())
-  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  id                  String    @id @default(uuid())
+  title               String
+  dueDate             DateTime
+  isCompleted         Boolean   @default(false)
+  notes               String?
+  caseId              String
+  createdAt           DateTime  @default(now())
+  editVersion         Int       @default(0)
+  source              String?
+  sourceDate          String?
+  sourceConfirmedAt   DateTime?
+  sourceConfirmedById String?
+  case                Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, source])
 }
 
 model TimelineEvent {
@@ -156,8 +189,9 @@ model Notification {
 
 model FormConfig {
   id        String   @id @default(uuid())
-  scope     String   @unique @default("global") // "global" or studioId
+  scope     String   @unique @default("global") // global (legacy template), studio:<id>, user:<id>
   sections  String   // JSON string with section config
+  version   Int      @default(1)
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
 }
@@ -168,22 +202,26 @@ model Task {
   instructions String?
   status       String      @default("PENDING") // PENDING, IN_PROGRESS, SUBMITTED, REVISION_REQUESTED, APPROVED
   dueDate      DateTime?
-  caseId       String
+  caseId       String?
   assigneeId   String
-  reviewerId   String
+  reviewerId   String?
+  priority     String      @default("MEDIUM")
+  studioId     String?
   createdById  String
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   requiresWriting Boolean @default(false)
-  case         Case        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  case         Case?       @relation(fields: [caseId], references: [id], onDelete: Cascade)
   assignee     User        @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  reviewer     User        @relation("TaskReviewer", fields: [reviewerId], references: [id])
+  reviewer     User?       @relation("TaskReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
   createdBy    User        @relation("TaskCreator", fields: [createdById], references: [id])
   events       TaskEvent[]
+  nextActionFor Case? @relation("CaseNextAction")
 
   @@index([caseId])
   @@index([assigneeId, status])
   @@index([reviewerId, status])
+  @@index([dueDate])
 }
 
 model TaskEvent {

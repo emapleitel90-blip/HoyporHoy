@@ -15,6 +15,7 @@ const Notifications = lazy(() => import('./pages/Notifications'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Help = lazy(() => import('./pages/Help'));
 const MyDay = lazy(() => import('./pages/MyDay'));
+const AccountAccess = lazy(() => import('./pages/AccountAccess'));
 
 const ProtectedRoute = () => {
     const { user, loading } = useAuth();
@@ -29,11 +30,14 @@ function App() {
                 <Router>
                     <Routes>
                         <Route path="/login" element={<Login />} />
+                        <Route element={<RouteContent />}>
+                            <Route path="/activar-acceso" element={<AccountAccess />} />
+                        </Route>
 
                         <Route element={<ProtectedRoute />}>
                             <Route element={<Layout />}>
                               <Route element={<RouteContent />}>
-                                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                                <Route path="/" element={<Navigate to="/mi-jornada" replace />} />
                                 <Route path="/dashboard" element={<Dashboard />} />
                                 <Route path="/mi-jornada" element={<MyDay />} />
                                 <Route path="/cases" element={<CaseList />} />

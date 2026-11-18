@@ -7,6 +7,7 @@
     "test": "npm --prefix server test && npm --prefix client test",
     "lint": "npm --prefix client run lint",
     "build": "npm --prefix client run build",
+    "verify:beta": "npm run lint && npm test && npm run build",
     "prepare": "husky"
   },
   "lint-staged": {

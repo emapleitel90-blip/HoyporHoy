@@ -53,13 +53,14 @@ it('registra los campos del expediente que cambiaron sin publicar sus valores ni
     expect(created.status).toBe(201);
     const id=created.body.id;
     expect(await prisma.notification.count({where:{caseId:id,title:'Expediente creado'}})).toBe(2);
-    expect((await auth('put',`/api/cases/${id}`).send({description:'Contenido privado de prueba',status:'CLOSED'})).status).toBe(200);
+    const updated = await auth('put',`/api/cases/${id}`).send({description:'Contenido privado de prueba',status:'CLOSED',version:created.body.editVersion});
+    expect(updated.status).toBe(200);
     const notices=await prisma.notification.findMany({where:{caseId:id,title:'Expediente actualizado'}});
     expect(notices).toHaveLength(2);
     expect(notices[0].message).toContain('descripción');
     expect(notices[0].message).toContain('estado');
     expect(notices[0].message).not.toContain('Contenido privado');
-    expect((await auth('put',`/api/cases/${id}`).send({status:'CLOSED'})).status).toBe(200);
+    expect((await auth('put',`/api/cases/${id}`).send({status:'CLOSED',version:updated.body.editVersion})).status).toBe(200);
     expect(await prisma.notification.count({where:{caseId:id,title:'Expediente actualizado'}})).toBe(2);
     expect((await auth('put',`/api/cases/${id}`,'b').send({title:'No autorizado'})).status).toBe(403);
     expect(await prisma.notification.count({where:{caseId:id}})).toBe(4);

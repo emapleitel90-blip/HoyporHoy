@@ -30,6 +30,10 @@ const StudioList = () => {
     });
 
     const [newCredentials, setNewCredentials] = useState(null);
+    const [recoveryEmail, setRecoveryEmail] = useState('');
+    const [recoveryBusy, setRecoveryBusy] = useState(false);
+    const [recoveryError, setRecoveryError] = useState('');
+    const [recovery, setRecovery] = useState(null);
 
     const fetchStudios = useCallback(async () => {
         try {
@@ -61,7 +65,7 @@ const StudioList = () => {
 
             setNewCredentials({
                 adminEmail: data.adminEmail,
-                password: data.defaultPassword,
+                invitation: data.invitation,
                 studioName: data.studio.name
             });
 
@@ -74,6 +78,25 @@ const StudioList = () => {
             setLoading(false);
         }
     };
+
+    async function handleRecovery(event) {
+        event.preventDefault();
+        if (recoveryBusy) return;
+        setRecoveryBusy(true);
+        setRecoveryError('');
+        setRecovery(null);
+        try {
+            const token = localStorage.getItem('lyp_token');
+            const { data } = await axios.post(api.auth.recoveryLinks, { email: recoveryEmail }, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setRecovery({ ...data, email: recoveryEmail });
+        } catch (error) {
+            setRecoveryError(error.response?.data?.message || 'No se pudo generar el enlace.');
+        } finally {
+            setRecoveryBusy(false);
+        }
+    }
 
     const toggleStatus = async (id, currentStatus) => {
         try {
@@ -115,6 +138,21 @@ const StudioList = () => {
                     <span>Nuevo Cliente Jurídico</span>
                 </Button>
             </div>
+
+            <Card className="space-y-4 p-5">
+                <h3 className="font-bold">Recuperar el acceso de una cuenta</h3>
+                <p className="text-sm text-muted-foreground">Verificá la identidad de la persona antes de generar y compartir el enlace.</p>
+                <form onSubmit={handleRecovery} className="flex flex-wrap items-end gap-3">
+                    <div className="space-y-2">
+                        <Label htmlFor="recovery-email">Correo de la cuenta</Label>
+                        <Input id="recovery-email" type="email" required value={recoveryEmail}
+                            onChange={event => setRecoveryEmail(event.target.value)} />
+                    </div>
+                    <Button type="submit" disabled={recoveryBusy}>{recoveryBusy ? 'Generando…' : 'Generar enlace'}</Button>
+                </form>
+                {recoveryError && <p role="alert" className="text-destructive">{recoveryError}</p>}
+                {recovery && <ShareAccessLink link={recovery} email={recovery.email} />}
+            </Card>
 
             {/* KPIs */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -255,8 +293,8 @@ const StudioList = () => {
                                 <div className="w-16 h-16 bg-emerald-100 text-status-emerald rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-600/10">
                                     <ShieldCheck size={32} />
                                 </div>
-                                <h3 className="text-2xl font-black text-foreground tracking-tight mb-2">¡Acceso Generado!</h3>
-                                <p className="text-muted-foreground text-sm font-medium mb-8">Credenciales de seguridad para el nuevo inquilino LyP.</p>
+                                <h3 className="text-2xl font-black text-foreground tracking-tight mb-2">Invitación generada</h3>
+                                <p className="text-muted-foreground text-sm font-medium mb-8">El administrador elegirá su contraseña al abrir el enlace.</p>
 
                                 <div className="bg-background rounded-2xl p-6 border border-border text-left space-y-4 mb-8">
                                     <div>
@@ -267,14 +305,13 @@ const StudioList = () => {
                                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Email Administrador</p>
                                         <p className="text-sm font-bold text-link underline">{newCredentials.adminEmail}</p>
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Contraseña Temporal</p>
-                                        <p className="text-sm font-mono font-black text-foreground bg-card px-3 py-1.5 rounded-lg border border-border inline-block">{newCredentials.password}</p>
-                                    </div>
+                                    {newCredentials.invitation
+                                        ? <ShareAccessLink link={newCredentials.invitation} email={newCredentials.adminEmail} />
+                                        : <p role="alert">Generá un enlace desde la sección de recuperación de acceso.</p>}
                                 </div>
 
                                 <Button variant="legacy" size="legacy"
-                                    onClick={() => setIsModalOpen(false)}
+                                    onClick={() => { setIsModalOpen(false); setNewCredentials(null); }}
                                     className="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:bg-primary transition-all shadow-lg"
                                 >
                                     Cerrar y Finalizar
@@ -318,7 +355,7 @@ const StudioList = () => {
                                         disabled={loading}
                                         className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 mt-4"
                                     >
-                                        {loading ? 'Procesando alta...' : 'Registrar y Generar Credenciales'}
+                                        {loading ? 'Procesando alta…' : 'Registrar y generar invitación'}
                                     </Button>
                                 </form>
                             </div>
@@ -329,5 +366,30 @@ const StudioList = () => {
         </div>
     );
 };
+
+function ShareAccessLink({ link, email }) {
+    const [copyStatus, setCopyStatus] = useState('');
+    const url = new URL('/activar-acceso', window.location.origin);
+    url.hash = new URLSearchParams({ token: link.token }).toString();
+
+    async function copy() {
+        try {
+            await navigator.clipboard.writeText(url.href);
+            setCopyStatus('Enlace copiado.');
+        } catch {
+            setCopyStatus('Seleccioná el enlace y copialo manualmente.');
+        }
+    }
+
+    return (
+        <div className="space-y-2 text-left">
+            <p className="text-sm text-muted-foreground">Compartí el enlace por un canal verificado con {email}. Se puede usar una vez.</p>
+            <p className="text-sm text-muted-foreground">Vence el {new Date(link.expiresAt).toLocaleString('es-AR')}.</p>
+            <Input readOnly value={url.href} aria-label="Enlace de acceso" onFocus={event => event.target.select()} />
+            <Button type="button" variant="outline" onClick={copy}>Copiar enlace</Button>
+            {copyStatus && <p role="status" className="text-sm">{copyStatus}</p>}
+        </div>
+    );
+}
 
 export default StudioList;

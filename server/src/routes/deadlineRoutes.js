@@ -2,6 +2,7 @@ import express from 'express';
 import {
     getDeadlinesByCase,
     createDeadline,
+    confirmPrescription,
     updateDeadline,
     deleteDeadline,
     getUpcomingDeadlines,
@@ -15,6 +16,7 @@ const router = express.Router();
 // IMPORTANTE: las rutas fijas van ANTES de las rutas con :id para evitar conflictos
 router.get('/upcoming', protect, getUpcomingDeadlines);
 router.get('/my-day', protect, getMyDay);
+router.post('/case/:id/confirm-prescription', protect, confirmPrescription);
 
 router.route('/:id')
     .put(protect, updateDeadline)

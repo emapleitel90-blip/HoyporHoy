@@ -57,6 +57,11 @@ export const TaskPanel = ({ caseItem, inbox = false }) => {
         return () => { currentVersion.current++; };
     }, [load]);
     useEffect(() => {
+        const refresh = () => load();
+        window.addEventListener('notifications-updated', refresh);
+        return () => window.removeEventListener('notifications-updated', refresh);
+    }, [load]);
+    useEffect(() => {
         let cancelled = false;
         setUsers([]);
         setUsersError(null);

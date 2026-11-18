@@ -36,7 +36,9 @@ export const AuthProvider = ({ children }) => {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || 'Credenciales inválidas');
+                throw new Error([403, 429].includes(response.status) && data.message
+                    ? data.message
+                    : 'Credenciales inválidas. Verificá tu email y contraseña.');
             }
 
             const userData = {

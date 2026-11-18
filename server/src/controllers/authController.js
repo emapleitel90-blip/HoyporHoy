@@ -1,9 +1,10 @@
 import prisma from '../utils/prismaClient.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { canAccessStudio, STUDIO_STATUS, studioSuspendedMessage } from '../utils/studioAccess.js';
 
-const generateToken = (id, role) => {
-    return jwt.sign({ id, role }, process.env.JWT_SECRET, {
+const generateToken = ({ id, role, sessionVersion }) => {
+    return jwt.sign({ id, role, sessionVersion }, process.env.JWT_SECRET, {
         expiresIn: '30d',
     });
 };
@@ -45,7 +46,7 @@ export const register = async (req, res) => {
                 email: user.email,
                 role: user.role,
                 studioId: user.studioId,
-                token: generateToken(user.id, user.role),
+                token: generateToken(user),
             });
         } else {
             res.status(400).json({ message: 'Invalid user data' });
@@ -61,14 +62,23 @@ export const login = async (req, res) => {
     try {
         const user = await prisma.user.findFirst({
             where: { email, deletedAt: null },
+            include: { studio: { select: { status: true } } },
         });
 
         if (user && (await bcrypt.compare(password, user.password))) {
-            // Update last login
-            await prisma.user.update({
-                where: { id: user.id },
+            if (!canAccessStudio(user)) {
+                return res.status(403).json({ message: studioSuspendedMessage });
+            }
+            const updated = await prisma.user.updateMany({
+                where: {
+                    id: user.id, deletedAt: null, sessionVersion: user.sessionVersion, studioId: user.studioId,
+                    ...(user.studioId ? { studio: { status: STUDIO_STATUS.ACTIVE } } : {}),
+                },
                 data: { lastLogin: new Date() },
             });
+            if (updated.count === 0) {
+                return res.status(401).json({ message: 'La cuenta cambió. Volvé a iniciar sesión.' });
+            }
 
             res.json({
                 _id: user.id,
@@ -76,7 +86,7 @@ export const login = async (req, res) => {
                 email: user.email,
                 role: user.role,
                 studioId: user.studioId,
-                token: generateToken(user.id, user.role),
+                token: generateToken(user),
             });
         } else {
             res.status(401).json({ message: 'Invalid email or password' });
@@ -129,12 +139,18 @@ export const changePassword = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-        await prisma.user.update({
-            where: { id: req.user.id },
-            data: { password: hashedPassword },
+        const changed = await prisma.user.updateMany({
+            where: {
+                id: req.user.id, deletedAt: null, sessionVersion: req.sessionVersion, studioId: req.user.studioId,
+                ...(req.user.studioId ? { studio: { status: STUDIO_STATUS.ACTIVE } } : {}),
+            },
+            data: { password: hashedPassword, sessionVersion: { increment: 1 } },
         });
+        if (changed.count === 0) {
+            return res.status(401).json({ message: 'Tu sesión ya no es válida. Volvé a iniciar sesión.' });
+        }
 
-        res.json({ message: 'Contraseña actualizada correctamente' });
+        res.json({ message: 'Contraseña actualizada. Volvé a iniciar sesión.' });
     } catch (error) {
         console.error('Error changing password:', error);
         res.status(500).json({ message: 'Server error' });

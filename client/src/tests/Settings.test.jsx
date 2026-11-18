@@ -9,7 +9,7 @@ const { showToast } = vi.hoisted(() => ({ showToast: vi.fn() }));
 vi.mock('axios', () => ({ default: { get: vi.fn(), put: vi.fn(), post: vi.fn() } }));
 vi.mock('../context/ToastContext', () => ({ useToast: () => ({ showToast }) }));
 
-const config = () => ({ sections: [
+const config = () => ({ version: 1, canEdit: true, sections: [
     { id: 'documents', title: 'Documentación', description: 'Documentos del cliente', enabled: true, type: 'checklist', items: ['DNI'] },
     { id: 'data', title: 'Datos básicos', description: 'Datos del cliente', enabled: true, type: 'standard', fields: [{ label: 'Nombre', type: 'text' }] },
 ] });
@@ -57,7 +57,9 @@ describe('Configuración: errores y recuperación', () => {
     });
 
     it('conserva los cambios si falla el guardado y permite guardarlos después', async () => {
-        axios.put.mockRejectedValueOnce(new Error('Error al guardar')).mockResolvedValueOnce({});
+        axios.put.mockRejectedValueOnce(new Error('Error al guardar')).mockImplementationOnce(
+            async (_url, body) => ({ data: { ...body, version: 2, canEdit: true } })
+        );
         render(<Settings />);
         await loaded();
         fireEvent.change(screen.getByDisplayValue('Documentos del cliente'), { target: { value: 'Descripción editada' } });
@@ -68,13 +70,13 @@ describe('Configuración: errores y recuperación', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Guardar Cambios' }));
         await waitFor(() => expect(showToast).toHaveBeenCalledWith('Configuración guardada con éxito', 'success'));
         expect(axios.put).toHaveBeenLastCalledWith(api.formConfig.base,
-            { sections: [expect.objectContaining({ description: 'Descripción editada' }), config().sections[1]] },
+            { version: 1, sections: [expect.objectContaining({ description: 'Descripción editada' }), config().sections[1]] },
             { headers: { Authorization: 'Bearer test-token' } });
     });
 
     it('restablecer selecciona un módulo disponible aunque el anterior ya no exista', async () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
-        axios.post.mockResolvedValue({ data: { sections: [{ ...config().sections[0], id: 'new-section', description: 'Valores por defecto' }] } });
+        axios.post.mockResolvedValue({ data: { version: 2, canEdit: true, sections: [{ ...config().sections[0], id: 'new-section', description: 'Valores por defecto' }] } });
         render(<Settings />);
         await loaded();
         fireEvent.click(screen.getByRole('button', { name: 'Datos básicos' }));
@@ -82,6 +84,8 @@ describe('Configuración: errores y recuperación', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Restablecer' }));
         expect(await screen.findByDisplayValue('Valores por defecto')).toBeTruthy();
         expect(showToast).toHaveBeenCalledWith('Configuración reseteada', 'success');
+        expect(axios.post).toHaveBeenCalledWith(api.formConfig.reset, { version: 1 },
+            { headers: { Authorization: 'Bearer test-token' } });
     });
 
     it.each(['network', 'invalid-response'])('si falla restablecer (%s), conserva la configuración y avisa el error', async failure => {
@@ -98,11 +102,24 @@ describe('Configuración: errores y recuperación', () => {
     });
 
     it('una configuración sin módulos muestra un estado vacío y permite restablecerla', async () => {
-        axios.get.mockResolvedValue({ data: { sections: [] } });
+        axios.get.mockResolvedValue({ data: { ...config(), sections: [] } });
         render(<Settings />);
         await loaded();
         expect(screen.getByRole('status').textContent).toContain('No hay módulos configurados');
         expect(screen.getByRole('button', { name: 'Restablecer' }).disabled).toBe(false);
+    });
+
+    it.each([
+        { ...config(), canEdit: false },
+        { sections: config().sections },
+    ])('muestra el formulario en solo lectura sin permiso explícito de edición', async data => {
+        axios.get.mockResolvedValue({ data });
+        render(<Settings />);
+        const description = await screen.findByDisplayValue('Documentos del cliente');
+        expect(description.readOnly).toBe(true);
+        expect(screen.getByRole('button', { name: 'Cambiar estado' }).disabled).toBe(true);
+        expect(screen.queryByRole('button', { name: 'Guardar Cambios' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Restablecer' })).toBeNull();
     });
 
     it('aborta la carga al salir y no reemplaza la configuración de una nueva pantalla', async () => {

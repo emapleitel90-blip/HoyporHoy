@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { protect, superAdmin, admin, lawyer } from '../middleware/authMiddleware.js';
+import { readFileSync } from 'node:fs';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const mockRes = () => {
@@ -130,13 +131,8 @@ describe('lawyer middleware', () => {
 // ── B1: No hardcoded secrets in source ───────────────────────────────────────
 describe('B1 — No hardcoded credentials in controller source', () => {
     it('studioController does not export or reference changeme123', async () => {
-        // Dynamic import: if the module contains 'changeme123' as a string literal,
-        // this test documents the regression; module import itself is the check.
-        const mod = await import('../controllers/studioController.js');
-        // The randomBytes pattern should be used — verify the export exists
-        expect(typeof mod.createStudio).toBe('function');
-        // Source-level check: reading raw source is not feasible here; 
-        // rely on the grep scan in CI (see ci/ci.yml) + code review.
+        const source = readFileSync(new URL('../controllers/studioController.js', import.meta.url), 'utf8');
+        expect(source).not.toContain('changeme123');
     });
 
     it('JWT_SECRET is defined in the test environment', () => {

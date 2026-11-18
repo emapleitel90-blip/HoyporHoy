@@ -88,8 +88,8 @@ describe('Navegación con React Router actualizado', () => {
         fireEvent.change(screen.getByPlaceholderText('nombre@estudio.com'), { target: { value: user.email } });
         fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'test-password' } });
         fireEvent.click(screen.getByRole('button', { name: 'Acceder al Sistema' }));
-        await screen.findByRole('heading', { name: 'Inicio de prueba' });
-        expect(window.location.pathname).toBe('/dashboard');
+        await screen.findByRole('heading', { name: 'Jornada de prueba' });
+        expect(window.location.pathname).toBe('/mi-jornada');
         expect(fetch).toHaveBeenCalledWith(api.auth.login, expect.objectContaining({ method: 'POST' }));
         expect(localStorage.getItem('lyp_token')).toBe('new-token');
         fireEvent.click(screen.getByRole('button', { name: 'Cerrar Sesión' }));
@@ -98,14 +98,50 @@ describe('Navegación con React Router actualizado', () => {
         expect(localStorage.getItem('lyp_token')).toBeNull();
     });
 
-    it('redirige la raíz al dashboard y conserva los enlaces del menú', async () => {
+    it.each([
+        [403, 'Tu estudio está suspendido. Contactá al administrador de la plataforma.'],
+        [429, 'Demasiados intentos. Volvé a intentar en 15 minutos.'],
+    ])('muestra el motivo informado por el servidor al impedir el ingreso (%s)', async (status, message) => {
+        fetch.mockResolvedValueOnce({ ok: false, status, json: async () => ({ message }) });
+        open('/login');
+        fireEvent.change(screen.getByPlaceholderText('nombre@estudio.com'), { target: { value: user.email } });
+        fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'test-password' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Acceder al Sistema' }));
+        expect((await screen.findByRole('alert')).textContent).toContain(message);
+        expect(window.location.pathname).toBe('/login');
+        expect(localStorage.getItem('lyp_token')).toBeNull();
+    });
+
+    it('permite elegir la contraseña desde una invitación y volver al ingreso', async () => {
+        const token = 'a'.repeat(43);
+        const password = 'invited-password-123';
+        fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ message: 'Contraseña guardada' }) });
+        open(`/activar-acceso#token=${token}`);
+        const first = await screen.findByLabelText('Nueva contraseña');
+        fireEvent.change(first, { target: { value: password } });
+        fireEvent.change(screen.getByLabelText('Repetí la contraseña'), { target: { value: 'different-password' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Guardar contraseña' }));
+        expect((await screen.findByRole('alert')).textContent).toContain('deben coincidir');
+        expect(fetch).not.toHaveBeenCalled();
+        fireEvent.change(screen.getByLabelText('Repetí la contraseña'), { target: { value: password } });
+        fireEvent.click(screen.getByRole('button', { name: 'Guardar contraseña' }));
+        expect((await screen.findByRole('status')).textContent).toContain('Contraseña guardada');
+        expect(fetch).toHaveBeenCalledWith(api.auth.redeemAccountLink, expect.objectContaining({
+            method: 'POST', body: JSON.stringify({ token, password }),
+        }));
+        fireEvent.click(screen.getByRole('link', { name: 'Ir al inicio de sesión' }));
+        await screen.findByRole('button', { name: 'Acceder al Sistema' });
+        expect(window.location.pathname).toBe('/login');
+    });
+
+    it('abre Mi jornada desde la raíz y conserva el acceso a Resumen y Configuración', async () => {
         session();
         open();
-        await screen.findByRole('heading', { name: 'Inicio de prueba' });
-        expect(window.location.pathname).toBe('/dashboard');
-        fireEvent.click(screen.getByRole('link', { name: 'Mi jornada' }));
         await screen.findByRole('heading', { name: 'Jornada de prueba' });
         expect(window.location.pathname).toBe('/mi-jornada');
+        fireEvent.click(screen.getByRole('link', { name: 'Resumen' }));
+        await screen.findByRole('heading', { name: 'Inicio de prueba' });
+        expect(window.location.pathname).toBe('/dashboard');
         fireEvent.click(screen.getByRole('link', { name: 'Configuración' }));
         await screen.findByRole('heading', { name: 'Configuración de prueba' });
         expect(window.location.pathname).toBe('/settings');

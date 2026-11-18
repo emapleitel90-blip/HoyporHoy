@@ -3,10 +3,13 @@ import { getCases, createCase, getCaseById, updateCase, getCaseStats, importCase
 import { addCaseFile, downloadCaseFile, deleteCaseFile } from '../controllers/caseFileController.js';
 import { authorizeCaseFileUpload, receiveCaseFile } from '../middleware/caseFileUpload.js';
 import { protect } from '../middleware/authMiddleware.js';
+import { checkCaseDuplicates, getNextAction, setNextAction } from '../controllers/caseWorkflowController.js';
 
 const router = express.Router();
 
 router.get('/stats', protect, getCaseStats);
+router.get('/check-duplicates', protect, checkCaseDuplicates);
+router.route('/:id/next-action').get(protect, getNextAction).put(protect, setNextAction);
 
 router.route('/')
     .get(protect, getCases)

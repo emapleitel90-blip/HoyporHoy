@@ -1,3 +1,4 @@
+import { dayKey, fullDay } from '../utils/agendaDates';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card } from '../components/ui/card';
@@ -5,10 +6,11 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { NativeSelect } from '../components/ui/native-select';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../components/ui/table';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Plus, Search, Filter, X, UploadCloud } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { DataImportModal } from '../components/DataImportModal';
+import { CasePriorityBadge, CasePrioritySelect } from '../components/CasePriority';
 import { api } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -45,20 +47,28 @@ const CaseList = () => {
     const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
     const [filterFuero, setFilterFuero] = useState('');
+    const [filterPriority, setFilterPriority] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const listRequest = useRef(null);
 
     const fetchCases = useCallback(async () => {
+        listRequest.current?.abort();
+        const controller = new AbortController();
+        listRequest.current = controller;
         try {
             setLoading(true);
+            setError(null);
             const params = new URLSearchParams();
             if (filterStatus) params.append('status', filterStatus);
             if (filterFuero) params.append('fuero', filterFuero);
+            if (filterPriority) params.append('priority', filterPriority);
             if (search) params.append('search', search);
 
             const url = `${api.cases.list}${params.toString() ? '?' + params.toString() : ''}`;
             const response = await fetch(url, {
-                headers: { 'Authorization': 'Bearer ' + getToken() }
+                headers: { 'Authorization': 'Bearer ' + getToken() },
+                signal: controller.signal,
             });
             if (!response.ok) throw new Error('Error al cargar casos');
             const result = await response.json();
@@ -71,31 +81,38 @@ const CaseList = () => {
                 title: c.title,
                 fuero: c.fuero,
                 status: c.status,
+                priority: c.priority,
+                nextAction: c.nextAction,
                 score: c.score,
                 createdAt: c.createdAt
             }));
 
-            setCases(mappedCases);
+            if (!controller.signal.aborted) setCases(mappedCases);
         } catch (err) {
+            if (controller.signal.aborted) return;
             setError('Error al cargar los casos');
             console.error(err);
         } finally {
-            setLoading(false);
+            if (!controller.signal.aborted) setLoading(false);
         }
-    }, [search, filterStatus, filterFuero, getToken]);
+    }, [search, filterStatus, filterFuero, filterPriority, getToken]);
 
     useEffect(() => {
         const timeout = setTimeout(() => { fetchCases(); }, search ? 400 : 0);
-        return () => clearTimeout(timeout);
+        return () => {
+            clearTimeout(timeout);
+            listRequest.current?.abort();
+        };
     }, [fetchCases, search]);
 
     const clearFilters = () => {
         setSearch('');
         setFilterStatus('');
         setFilterFuero('');
+        setFilterPriority('');
     };
 
-    const hasFilters = search || filterStatus || filterFuero;
+    const hasFilters = search || filterStatus || filterFuero || filterPriority;
 
     return (
         <div className="space-y-6">
@@ -153,7 +170,7 @@ const CaseList = () => {
                 </div>
 
                 {showFilters && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-border">
                         <div>
                             <Label className="block text-xs font-medium text-muted-foreground mb-1">Estado</Label>
                             <NativeSelect
@@ -180,6 +197,7 @@ const CaseList = () => {
                                 ))}
                             </NativeSelect>
                         </div>
+                        <CasePrioritySelect id="filter-case-priority" value={filterPriority} onChange={e => setFilterPriority(e.target.value)} filter />
                     </div>
                 )}
             </Card>
@@ -193,6 +211,7 @@ const CaseList = () => {
                                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Consultante</TableHead>
                                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Fuero</TableHead>
                                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Estado</TableHead>
+                                <TableHead className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Prioridad</TableHead>
                                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Score</TableHead>
                                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha</TableHead>
                                 <TableHead className="relative px-6 py-3"><span className="sr-only">Acciones</span></TableHead>
@@ -201,18 +220,18 @@ const CaseList = () => {
                         <TableBody className="bg-card divide-y divide-border">
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan="6" className="px-6 py-12 text-center text-muted-foreground">
+                                    <TableCell colSpan="7" className="px-6 py-12 text-center text-muted-foreground">
                                         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                                         Cargando casos...
                                     </TableCell>
                                 </TableRow>
                             ) : error ? (
                                 <TableRow>
-                                    <TableCell colSpan="6" className="px-6 py-8 text-center text-status-red">{error}</TableCell>
+                                    <TableCell colSpan="7" className="px-6 py-8 text-center text-status-red">{error}</TableCell>
                                 </TableRow>
                             ) : cases.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan="6" className="px-6 py-12 text-center text-muted-foreground">
+                                    <TableCell colSpan="7" className="px-6 py-12 text-center text-muted-foreground">
                                         <p className="font-medium">No se encontraron casos.</p>
                                         {hasFilters && <p className="text-sm mt-1">Intentá con otros filtros o <Button variant="legacy" size="legacy" onClick={clearFilters} className="text-link hover:underline">limpiar búsqueda</Button>.</p>}
                                         {!hasFilters && <Link to="/cases/new" className="inline-block mt-2 text-link hover:underline text-sm font-medium">Crear el primer caso →</Link>}
@@ -227,7 +246,17 @@ const CaseList = () => {
                                             </div>
                                             <div className="ml-3">
                                                 <div className="text-sm font-semibold text-foreground">{item.clientName || 'Sin Nombre'}</div>
+                                                {item.title && item.title !== `Caso de ${item.clientName}` && (
+                                                    <p className="max-w-[280px] break-words text-xs text-muted-foreground">{item.title}</p>
+                                                )}
                                                 <div className="text-xs text-muted-foreground">{item.caseNumber}</div>
+                                                <div className="mt-2 max-w-[280px] whitespace-normal text-xs leading-relaxed">
+                                                    {item.nextAction && item.nextAction.status !== 'COMPLETED' ? <>
+                                                        <p className="font-medium text-foreground">Próxima: {item.nextAction.title}</p>
+                                                        <p className="text-muted-foreground">{item.nextAction.assignee?.name || 'Sin responsable'}</p>
+                                                        {item.nextAction.dueDate && <p className={dayKey(item.nextAction.dueDate) < dayKey(new Date()) ? 'text-status-red' : 'text-muted-foreground'}>{fullDay(dayKey(item.nextAction.dueDate))}</p>}
+                                                    </> : <Link to={'/cases/' + item.id} className="text-link underline">{item.nextAction ? 'Definir siguiente acción' : 'Sin próxima acción · definir'}</Link>}
+                                                </div>
                                             </div>
                                         </div>
                                     </TableCell>
@@ -238,6 +267,9 @@ const CaseList = () => {
                                         <Badge variant="outline" className={`px-2 py-1 text-xs leading-5 font-semibold rounded-md border-transparent ${STATUS_COLORS[item.status] || 'bg-muted text-foreground'}`}>
                                             {STATUS_LABELS[item.status] || item.status}
                                         </Badge>
+                                    </TableCell>
+                                    <TableCell className="px-6 py-4 whitespace-nowrap">
+                                        <CasePriorityBadge priority={item.priority} />
                                     </TableCell>
                                     <TableCell className="px-6 py-4 whitespace-nowrap">
                                         <ScoreBadge score={item.score} />

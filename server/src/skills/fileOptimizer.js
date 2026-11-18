@@ -76,9 +76,12 @@ function cleanDirectory(dir, report) {
     }
 }
 
-async function runFileOptimizer() {
+async function runFileOptimizer({ projectRoot } = {}) {
+    if (process.env.NODE_ENV === 'test' && projectRoot === undefined) {
+        throw new Error('Las pruebas del optimizador requieren un directorio temporal explícito');
+    }
     // La raíz del proyecto (lyp-app)
-    const projectRoot = path.resolve(__dirname, '../../../'); 
+    projectRoot = path.resolve(projectRoot ?? path.resolve(__dirname, '../../../'));
 
     const report = {
         timestamp: new Date().toISOString(),

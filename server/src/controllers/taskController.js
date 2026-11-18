@@ -38,7 +38,7 @@ export const getCaseTasks = handle(async (req, res) => {
     const caseItem = await prisma.case.findFirst({ where: { id: req.params.caseId, ...caseScope(req.user) } });
     if (!caseItem) throw fail(404, 'Expediente no disponible');
     res.json(await prisma.task.findMany({
-        where: { caseId: caseItem.id }, include: taskInclude, orderBy: { createdAt: 'desc' },
+        where: { caseId: caseItem.id, reviewerId: { not: null } }, include: taskInclude, orderBy: { createdAt: 'desc' },
     }));
 });
 
@@ -52,7 +52,7 @@ export const getTask = handle(async (req, res) => {
 
 export const getMyTasks = handle(async (req, res) => {
     res.json(await prisma.task.findMany({
-        where: { assigneeId: req.user.id, status: { not: 'APPROVED' }, case: caseScope(req.user) },
+        where: { assigneeId: req.user.id, reviewerId: { not: null }, status: { not: 'APPROVED' }, case: caseScope(req.user) },
         include: taskInclude, orderBy: { createdAt: 'desc' },
     }));
 });
@@ -127,6 +127,7 @@ export const transitionTask = (operation) => handle(async (req, res) => {
             where: { id: req.params.id, case: caseScope(actor) },
         });
         if (!current) throw fail(404, 'Tarea no disponible');
+        if (!current.reviewerId) throw fail(400, 'Gestioná esta tarea desde el cronograma');
         const actorId = operation === 'review' ? current.reviewerId : current.assigneeId;
         if (actor.id !== actorId || (operation === 'review' && !REVIEWER_ROLES.includes(actor.role))) {
             throw fail(403, operation === 'review' ? 'Solo el revisor asignado puede revisar la tarea' : 'Solo el responsable asignado puede avanzar la tarea');

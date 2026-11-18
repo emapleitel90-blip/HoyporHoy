@@ -15,6 +15,7 @@ import optimizerRoutes from './routes/optimizerRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import formConfigRoutes from './routes/formConfigRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
+import agendaRoutes from './routes/agendaRoutes.js';
 import followUpRoutes from './routes/followUpRoutes.js';
 import feeRoutes from './routes/feeRoutes.js';
 import writingRoutes from './routes/writingRoutes.js';
@@ -46,6 +47,9 @@ if (!jwtSecret?.trim() || INSECURE_JWT_DEFAULTS.includes(jwtSecret.trim())) {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+const trustedProxyAddresses = (process.env.TRUSTED_PROXY_ADDRESSES || '').split(',').map(address => address.trim()).filter(Boolean);
+if (trustedProxyAddresses.length) app.set('trust proxy', trustedProxyAddresses);
+
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -69,6 +73,7 @@ app.use('/api/optimizer', optimizerRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/form-config', formConfigRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/agenda', agendaRoutes);
 app.use('/api/follow-ups', followUpRoutes);
 app.use('/api/fees', feeRoutes);
 app.use('/api/writings', writingRoutes);

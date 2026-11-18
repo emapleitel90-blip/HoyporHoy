@@ -1,21 +1,14 @@
 import prisma from '../utils/prismaClient.js';
-
-const tenantWhere = (user, extra = {}) => {
-    const baseExtra = { ...extra, deletedAt: null };
-    if (user.role === 'SUPER_ADMIN') return baseExtra;
-    if (!user.studioId) {
-        return { ...baseExtra, studioId: null, createdById: user.id };
-    }
-    return { ...baseExtra, studioId: user.studioId };
-};
+import { caseScope } from '../utils/caseAccess.js';
+import { urgentOpenCase } from '../utils/casePriority.js';
 
 export const getGeneralStats = async (req, res, next) => {
     try {
-        const where = tenantWhere(req.user);
+        const where = caseScope(req.user);
         const totalCases = await prisma.case.count({ where });
         const openCases = await prisma.case.count({ where: { ...where, status: 'OPEN' } });
         const pendingCases = await prisma.case.count({ where: { ...where, status: 'PENDING' } });
-        const urgentCases = await prisma.case.count({ where: { ...where, priority: 'URGENT', status: 'OPEN' } });
+        const urgentCases = await prisma.case.count({ where: { ...where, ...urgentOpenCase } });
         
         const byStatusRaw = await prisma.case.groupBy({
             by: ['status'],
@@ -47,7 +40,7 @@ export const getGeneralStats = async (req, res, next) => {
             take: 5
         });
 
-        res.json({
+        res.set('Cache-Control', 'private, no-store').json({
             total: totalCases,
             open: openCases,
             pending: pendingCases,
@@ -63,18 +56,25 @@ export const getGeneralStats = async (req, res, next) => {
 
 export const getCaseLoadByLawyer = async (req, res, next) => {
     try {
-        const studioWhere = req.user.role === 'SUPER_ADMIN' ? {} : { studioId: req.user.studioId };
+        const user = req.user;
+        // The platform admin sees all active lawyers. Studio members see their
+        // team, and independent lawyers see only their own workload.
+        const lawyerScope = user.role === 'SUPER_ADMIN'
+            ? {}
+            : user.studioId ? { studioId: user.studioId } : { id: user.id, studioId: null };
+        const openCases = { ...caseScope(user), status: 'OPEN' };
+
         const lawyers = await prisma.user.findMany({
-            where: { role: 'LAWYER', ...studioWhere, deletedAt: null },
+            where: { role: 'LAWYER', deletedAt: null, ...lawyerScope },
             select: {
                 id: true,
                 name: true,
                 _count: {
-                    select: { assignedCases: { where: { status: 'OPEN' } } }
+                    select: { assignedCases: { where: openCases } }
                 }
             }
         });
-        res.json(lawyers);
+        res.set('Cache-Control', 'private, no-store').json(lawyers);
     } catch (error) {
         next(error);
     }

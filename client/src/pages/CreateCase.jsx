@@ -1,10 +1,15 @@
+import { CaseDuplicateCheck } from '../components/CaseDuplicateCheck';
+import { CasePrioritySelect } from '../components/CasePriority';
+import { InitialCaseAction, QuickCaseForm } from '../components/QuickCaseForm';
+import { duplicateInput, checkCaseDuplicates } from '../utils/caseDuplicates';
+import { organizeAdmissionSections } from '../utils/caseAdmissionSections';
 import { Label } from '../components/ui/label';
 import { NativeSelect } from '../components/ui/native-select';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Save, ArrowRight, ArrowLeft, Plus, Trash2, X } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../config/api';
@@ -21,7 +26,7 @@ const DEFAULT_SECTIONS = [
         type: 'standard',
         fields: [
             { name: 'clientName', label: 'Nombre y Apellido completo', type: 'text', required: true },
-            { name: 'dni', label: 'DNI / CUIT', type: 'text', required: true },
+            { name: 'dni', label: 'DNI / CUIT / CUIL', type: 'text', required: true },
             { name: 'email', label: 'Email', type: 'email' },
             { name: 'phone', label: 'Teléfono', type: 'text' },
             { name: 'address', label: 'Domicilio', type: 'text', fullWidth: true },
@@ -60,8 +65,7 @@ const DEFAULT_SECTIONS = [
         enabled: true,
         type: 'standard',
         fields: [
-            { name: 'urgencia', label: 'Nivel de Urgencia', type: 'select', options: ['Baja', 'Media', 'Alta', 'Urgente (Plazos corriendo)'] },
-            { name: 'fechaPrescripcion', label: 'Fecha de Prescripción', type: 'date' },
+            { name: 'fechaPrescripcion', label: 'Fecha estimada de prescripción', type: 'date' },
             { name: 'proximaAudiencia', label: 'Próxima Audiencia', type: 'date' },
         ]
     },
@@ -162,6 +166,7 @@ const DEFAULT_SECTIONS = [
 
 // ─── Dynamic field renderer ────────────────────────────────────────────────────
 const DynamicField = ({ field, formData, handleChange, studioUsers = [] }) => {
+    if (['urgencia', 'nivelUrgencia', 'priority'].includes(field.name)) return null;
     if (field.name === 'assignedLawyerId' || field.name === 'abogadoAsignado') {
         return (
             <div className={field.fullWidth ? 'col-span-2' : ''}>
@@ -195,7 +200,16 @@ const DynamicField = ({ field, formData, handleChange, studioUsers = [] }) => {
     }
     if (field.type === 'select' && field.options) {
         return (
-            <Select label={field.label} name={field.name} value={formData[field.name] || ''} onChange={handleChange} options={field.options} required={field.required} />
+            <Select label={field.label} name={field.name} value={formData[field.name] || (['poderFirmado', 'procesoIniciado'].includes(field.name) ? 'Sin registrar' : '')} onChange={handleChange} options={field.options} required={field.required} />
+        );
+    }
+    if (field.name === 'fechaPrescripcion') {
+        return (
+            <div className={field.fullWidth ? 'col-span-2' : ''}>
+                <Field label="Fecha estimada de prescripción" name={field.name} type="date" value={formData[field.name] || ''}
+                    onChange={handleChange} required={field.required} />
+                <p className="mt-1 text-sm text-muted-foreground">Confirmá esta fecha desde la ficha para incorporarla a la agenda.</p>
+            </div>
         );
     }
     return (
@@ -213,17 +227,28 @@ const CreateCase = () => {
     const { user, getToken } = useAuth();
     const [activeSectionId, setActiveSectionId] = useState(null);
     const [formData, setFormData] = useState({});
+    const [priority, setPriority] = useState('MEDIUM');
     const [scoring, setScoring] = useState({});
     const [customItems, setCustomItems] = useState({}); // { sectionId: [items] }
     const [loading, setLoading] = useState(true);
+    const [showInterview, setShowInterview] = useState(false);
+    const [initialAction, setInitialAction] = useState({ enabled: false, title: '', dueDate: '', assigneeId: '' });
     const [saving, setSaving] = useState(false);
+    const [duplicateReview, setDuplicateReview] = useState(null);
+    const saveLock = useRef(false);
+    const createAttempt = useRef(null);
     const [error, setError] = useState(null);
+    const [loadedCase, setLoadedCase] = useState(null);
+    const [editConflict, setEditConflict] = useState(false);
+    const [reloadCase, setReloadCase] = useState(0);
     const [sections, setSections] = useState([]);
     const [studioUsers, setStudioUsers] = useState([]);
+    const [actionMembers, setActionMembers] = useState([]);
     const [caseStudioId, setCaseStudioId] = useState(undefined);
     const [caseOwner, setCaseOwner] = useState(null);
     const [usersError, setUsersError] = useState(null);
     const isEditMode = !!id;
+    const quickMode = !isEditMode && !showInterview;
 
     useEffect(() => {
         let cancelled = false;
@@ -231,6 +256,7 @@ const CreateCase = () => {
             const targetStudioId = isEditMode ? caseStudioId : user?.studioId;
             setUsersError(null);
             setStudioUsers([]);
+            setActionMembers([]);
             if (isEditMode && caseStudioId === undefined) return;
             if (!targetStudioId) {
                 const owner = isEditMode ? caseOwner : user;
@@ -243,7 +269,10 @@ const CreateCase = () => {
                 });
                 if (!res.ok) throw new Error('No se pudieron cargar los responsables del estudio.');
                 const data = await res.json();
-                if (!cancelled) setStudioUsers(data.filter(u => ['ADMIN', 'LAWYER', 'SUPER_ADMIN'].includes(u.role)));
+                if (!cancelled) {
+                    setStudioUsers(data.filter(u => ['ADMIN', 'LAWYER', 'SUPER_ADMIN'].includes(u.role)));
+                    if (['ADMIN', 'SUPER_ADMIN'].includes(user?.role)) setActionMembers(data.filter(member => member.id !== user.id));
+                }
             } catch (err) {
                 if (!cancelled) setUsersError(err.message);
             }
@@ -262,7 +291,7 @@ const CreateCase = () => {
             });
 
             if (!response.ok) {
-                setSections(DEFAULT_SECTIONS.filter(s => s.enabled));
+                setSections(organizeAdmissionSections(DEFAULT_SECTIONS).filter(s => s.enabled));
                 setActiveSectionId(DEFAULT_SECTIONS[0].id);
                 return;
             }
@@ -271,11 +300,11 @@ const CreateCase = () => {
 
             if (!data || !data.sections) {
                 // Si no hay configuración o falla, cargamos las por defecto
-                setSections(DEFAULT_SECTIONS.filter(s => s.enabled));
+                setSections(organizeAdmissionSections(DEFAULT_SECTIONS).filter(s => s.enabled));
                 setActiveSectionId(DEFAULT_SECTIONS[0].id);
             } else {
                 const parsedSections = typeof data.sections === 'string' ? JSON.parse(data.sections) : data.sections;
-                const enabledSections = (parsedSections || []).filter(s => s.enabled);
+                const enabledSections = organizeAdmissionSections(parsedSections || []).filter(s => s.enabled);
                 setSections(enabledSections);
                 if (enabledSections.length > 0) {
                     setActiveSectionId(enabledSections[0].id);
@@ -283,21 +312,22 @@ const CreateCase = () => {
             }
         } catch (err) {
             console.error('Error loading form config', err);
-            setSections(DEFAULT_SECTIONS.filter(s => s.enabled));
+            setSections(organizeAdmissionSections(DEFAULT_SECTIONS).filter(s => s.enabled));
             setActiveSectionId(DEFAULT_SECTIONS[0].id);
         } finally {
             if (!isEditMode) setLoading(false);
         }
     }, [getToken, isEditMode]);
 
-    const fetchCaseDetails = useCallback(async () => {
+    const fetchCaseDetails = useCallback(async (signal) => {
         try {
             setLoading(true);
             const response = await fetch(api.cases.get(id), {
                 headers: {
                     'Authorization': 'Bearer ' + getToken(),
                     'Content-Type': 'application/json'
-                }
+                },
+                signal,
             });
 
             if (!response.ok) {
@@ -305,26 +335,37 @@ const CreateCase = () => {
             }
 
             const data = await response.json();
-
-            setCaseStudioId(data.studioId || null);
-            setCaseOwner(data.createdBy || null);
+            if (signal.aborted) return;
+            if (data?.id !== id || !Number.isInteger(data.editVersion) || data.editVersion < 0) {
+                throw new Error('No se pudo obtener la versión guardada del expediente.');
+            }
             let parsedDetails = {};
             if (data.details) {
                 parsedDetails = typeof data.details === 'string' ? JSON.parse(data.details) : data.details;
             }
+            parsedDetails ||= {};
+            setCaseStudioId(data.studioId || null);
+            setCaseOwner(data.createdBy || null);
+            setPriority(data.priority || 'MEDIUM');
             setFormData({
                 ...parsedDetails,
+                poderFirmado: ({ Firmado: 'Sí', 'No firmado': 'No' })[parsedDetails.poderFirmado] || parsedDetails.poderFirmado || 'Sin registrar',
                 clientName: data.clientName,
                 title: data.title,
                 description: data.description,
+                fuero: data.fuero ?? parsedDetails.fuero,
                 assignedLawyerId: data.assignedLawyerId || data.assignedLawyer?.id || ''
             });
-            if (parsedDetails.scoring) setScoring(parsedDetails.scoring);
-            if (parsedDetails.customItems) setCustomItems(parsedDetails.customItems);
+            setScoring(parsedDetails.scoring || {});
+            setCustomItems(parsedDetails.customItems || {});
+            setLoadedCase({ id: data.id, version: data.editVersion, score: data.score });
+            setDuplicateReview(null);
+            setEditConflict(false);
+            setError(null);
         } catch (err) {
-            setError(err.message || 'Error cargando el caso');
+            if (!signal.aborted) setError(err.message || 'Error cargando el caso');
         } finally {
-            setLoading(false);
+            if (!signal.aborted) setLoading(false);
         }
     }, [id, getToken]);
 
@@ -333,10 +374,14 @@ const CreateCase = () => {
     }, [fetchFormConfig]);
 
     useEffect(() => {
-        if (isEditMode && sections.length > 0) fetchCaseDetails();
-    }, [isEditMode, sections, fetchCaseDetails]);
+        if (!isEditMode) return;
+        const controller = new AbortController();
+        fetchCaseDetails(controller.signal);
+        return () => controller.abort();
+    }, [isEditMode, fetchCaseDetails, reloadCase]);
 
     const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const handlePriorityChange = (event) => setPriority(event.target.value);
 
     const handleScoreSelect = (key, color) => {
         setScoring(prev => ({ ...prev, [key]: color }));
@@ -362,7 +407,9 @@ const CreateCase = () => {
     const totalScore = Object.values(scoring).reduce((acc, color) => acc + (SCORE_VALUES[color] || 0), 0);
     const scoreLabel = getScoreLabel(totalScore);
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (confirmed = false) => {
+        if (saveLock.current || (isEditMode && (editConflict || loadedCase?.id !== id))) return;
+        saveLock.current = true;
         try {
             setSaving(true);
             setError(null);
@@ -372,15 +419,46 @@ const CreateCase = () => {
                 return;
             }
 
+            const clientName = (formData.clientName || '').trim();
+            const title = (formData.title || '').trim() || (!quickMode && clientName ? `Caso de ${clientName}` : '');
+            if (!isEditMode && (!clientName || !title || clientName.length > 200 || title.length > 200)) {
+                throw new Error('Ingresá el nombre del cliente y el asunto, con hasta 200 caracteres cada uno.');
+            }
+            const nextAction = !isEditMode && initialAction.enabled ? {
+                title: initialAction.title.trim(), dueDate: initialAction.dueDate, assigneeId: initialAction.assigneeId || user.id,
+            } : null;
+            if (nextAction && (!nextAction.title || !nextAction.dueDate)) {
+                throw new Error('Completá qué hay que hacer y la fecha de la próxima acción.');
+            }
+
             const payload = {
-                title: formData.clientName ? `Caso de ${formData.clientName}` : 'Nuevo Caso',
-                clientName: formData.clientName,
+                title: title || 'Nuevo Caso',
+                clientName,
                 description: formData.descripcion || formData.descripcionCaso || formData.description || 'Sin descripción',
                 fuero: formData.fuero || null,
-                score: totalScore > 0 ? totalScore : null,
+                priority,
+                score: totalScore > 0 ? totalScore : (isEditMode ? loadedCase.score ?? null : null),
                 assignedLawyerId: formData.assignedLawyerId || null,
-                details: { ...formData, scoring, customItems }
+                details: { ...formData, clientName, scoring, customItems },
             };
+            const data = { ...payload, nextAction };
+            const fingerprint = JSON.stringify(data);
+            const retrying = !isEditMode && createAttempt.current?.fingerprint === fingerprint;
+            const duplicateData = duplicateInput({ ...formData, clientName }, id);
+            const duplicateKey = JSON.stringify(duplicateData);
+            if (!retrying && !(confirmed === true && duplicateReview?.key === duplicateKey)) {
+                try {
+                    const result = await checkCaseDuplicates(duplicateData, getToken());
+                    if (result.matches.length) {
+                        setDuplicateReview({ ...result, key: duplicateKey, status: 'review' });
+                        return;
+                    }
+                    setDuplicateReview(null);
+                } catch (error) {
+                    setDuplicateReview({ key: duplicateKey, status: 'unavailable' });
+                    return;
+                }
+            }
 
             if (isEditMode) {
                 const response = await fetch(api.cases.update(id), {
@@ -389,23 +467,27 @@ const CreateCase = () => {
                         'Authorization': 'Bearer ' + getToken(),
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ ...payload, version: loadedCase.version })
                 });
 
                 if (!response.ok) {
                     const errData = await response.json().catch(() => ({}));
+                    if (response.status === 409) setEditConflict(true);
                     throw new Error(errData.message || 'Error al actualizar el caso');
                 }
 
                 showToast('Caso actualizado con éxito', 'success');
             } else {
+                if (!retrying) {
+                    createAttempt.current = { fingerprint, requestId: crypto.randomUUID() };
+                }
                 const response = await fetch(api.cases.create, {
                     method: 'POST',
                     headers: {
                         'Authorization': 'Bearer ' + getToken(),
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ ...data, requestId: createAttempt.current.requestId })
                 });
 
                 if (!response.ok) {
@@ -413,7 +495,12 @@ const CreateCase = () => {
                     throw new Error(errData.message || 'Error al crear el caso');
                 }
 
+                const created = await response.json();
+                if (!created?.id) throw new Error('No se pudo confirmar el alta. Reintentá con los mismos datos.');
                 showToast('Caso creado con éxito', 'success');
+                notifyActivityChanged();
+                navigate(`/cases/${created.id}`, { replace: true });
+                return;
             }
             notifyActivityChanged();
             navigate('/cases');
@@ -421,14 +508,16 @@ const CreateCase = () => {
             setError(err.message || 'Error al guardar el caso');
             showToast('Error al guardar', 'error');
         } finally {
+            saveLock.current = false;
             setSaving(false);
         }
     };
 
     const currentSection = sections.find(s => s.id === activeSectionId);
+    const currentStorageId = currentSection?.storageId || currentSection?.id;
     const currentIndex = sections.findIndex(s => s.id === activeSectionId);
 
-    if (loading) return (
+    if (loading && !quickMode) return (
         <div className="flex items-center justify-center h-[60vh]">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-ring"></div>
         </div>
@@ -439,8 +528,7 @@ const CreateCase = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h2 className="text-3xl font-black text-foreground tracking-tighter">{isEditMode ? 'Editar Expediente' : 'Alta de Nuevo Caso'}</h2>
-                    <p className="text-muted-foreground font-medium">Entrevista de admisión y clasificación jurídica LyP.</p>
+                    <h2 className="text-3xl font-black text-foreground tracking-tighter">{isEditMode ? 'Editar Expediente' : 'Nuevo expediente'}</h2>
                 </div>
                 <div className="flex items-center space-x-3">
                     <Button variant="legacy" size="legacy" className="px-6 py-2.5 bg-card border border-border text-secondary-foreground rounded-2xl font-bold text-sm hover:bg-background transition-all" onClick={() => navigate('/cases')}>
@@ -448,23 +536,49 @@ const CreateCase = () => {
                     </Button>
                     <Button variant="legacy" size="legacy"
                         onClick={handleSubmit}
-                        disabled={saving}
+                        disabled={saving || (isEditMode && (editConflict || loadedCase?.id !== id))}
                         className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2.5 rounded-2xl font-bold text-sm shadow-lg shadow-indigo-600/20 transition-all hover:scale-105 disabled:opacity-50"
                     >
                         <Save size={18} />
-                        <span>{saving ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Finalizar Admisión')}</span>
+                        <span>{saving ? 'Guardando…' : isEditMode ? 'Guardar Cambios' : 'Crear expediente'}</span>
                     </Button>
                 </div>
             </div>
 
             {error && (
-                <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center space-x-3 text-status-red animate-in shake duration-500">
+                <div role="alert" className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center space-x-3 text-status-red animate-in shake duration-500">
                     <X className="w-5 h-5 flex-shrink-0" />
                     <p className="text-sm font-bold">{error}</p>
                 </div>
             )}
 
-            <Card className="bg-card rounded-[32px] border border-border shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[700px]">
+            {editConflict && (
+                <div className="space-y-2 rounded-xl border border-border bg-background p-4">
+                    <p className="text-sm">Tu borrador sigue en esta pestaña. Abrí la versión guardada en otra pestaña para comparar los cambios.</p>
+                    <div className="flex flex-wrap gap-3">
+                        <Button asChild variant="outline"><Link to={`/cases/${id}`} target="_blank" rel="noopener noreferrer">Ver versión guardada</Link></Button>
+                        <Button type="button" variant="ghost" onClick={() => setReloadCase(value => value + 1)}>Descartar borrador y cargar versión guardada</Button>
+                    </div>
+                </div>
+            )}
+            {isEditMode && !loadedCase && error && <Button type="button" variant="outline" onClick={() => setReloadCase(value => value + 1)}>Reintentar carga</Button>}
+
+            {!isEditMode && <div className="flex flex-wrap gap-2" aria-label="Modo de alta">
+                <Button type="button" variant={quickMode ? 'default' : 'outline'} disabled={saving} aria-pressed={quickMode}
+                    onClick={() => setShowInterview(false)}>Alta rápida</Button>
+                <Button type="button" variant={showInterview ? 'default' : 'outline'} disabled={saving} aria-pressed={showInterview}
+                    onClick={() => setShowInterview(true)}>Entrevista completa</Button>
+            </div>}
+
+            {quickMode && <QuickCaseForm formData={formData} onChange={handleChange} priority={priority} onPriorityChange={handlePriorityChange} disabled={saving} />}
+            {!quickMode && <fieldset disabled={saving} className="grid items-end gap-4 sm:grid-cols-2">
+                <Field label="Asunto" name="title" value={formData.title || ''} onChange={handleChange} placeholder="Ej. Reclamo laboral" />
+                <CasePrioritySelect id="case-priority" value={priority} onChange={handlePriorityChange} />
+            </fieldset>}
+            {!isEditMode && <InitialCaseAction action={initialAction} onChange={setInitialAction} members={actionMembers} disabled={saving} />}
+            <CaseDuplicateCheck formData={{ ...formData, clientName: (formData.clientName || '').trim() }} caseId={id} getToken={getToken} review={duplicateReview} busy={saving} onContinue={() => handleSubmit(true)} />
+
+            {!quickMode && <><Card className="bg-card rounded-[32px] border border-border shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[700px]">
                 {/* Sidebar Stepper */}
                 <div className="w-full md:w-72 bg-background border-r border-border overflow-y-auto">
                     <div className="p-6">
@@ -483,7 +597,7 @@ const CreateCase = () => {
                                         <span className={`w-6 h-6 flex-shrink-0 inline-flex items-center justify-center rounded-lg text-[11px] font-black mr-3 ${isActive ? 'bg-indigo-600 text-white' : 'bg-secondary text-muted-foreground'}`}>
                                             {idx + 1}
                                         </span>
-                                        <span className={`text-sm font-bold leading-tight ${isActive ? 'text-foreground' : ''}`}>{section.title}</span>
+                                        <span className={`text-sm font-bold leading-tight ${isActive ? 'text-foreground' : ''}`}>{section.title.replace(/^\d+\.\s*/, '')}</span>
                                     </Button>
                                 );
                             })}
@@ -510,32 +624,32 @@ const CreateCase = () => {
                                     {/* Default items from config */}
                                     {(currentSection.items || []).map(item => (
                                         <Label key={item} className={`flex items-center space-x-3 p-4 rounded-2xl border transition-all cursor-pointer ${
-                                            formData[`check_${currentSection.id}_${item}`]
+                                            formData[`check_${currentStorageId}_${item}`]
                                             ? 'bg-indigo-50 border-ring shadow-sm'
                                             : 'bg-card border-border hover:border-border'
                                         }`}>
                                             <input
                                                 type="checkbox"
-                                                checked={!!(formData[`check_${currentSection.id}_${item}`])}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, [`check_${currentSection.id}_${item}`]: e.target.checked }))}
+                                                checked={!!(formData[`check_${currentStorageId}_${item}`])}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, [`check_${currentStorageId}_${item}`]: e.target.checked }))}
                                                 className="w-5 h-5 text-link border-border rounded-lg focus:ring-ring"
                                             />
-                                            <span className={`text-sm font-bold ${formData[`check_${currentSection.id}_${item}`] ? 'text-link' : 'text-secondary-foreground'}`}>{item}</span>
+                                            <span className={`text-sm font-bold ${formData[`check_${currentStorageId}_${item}`] ? 'text-link' : 'text-secondary-foreground'}`}>{item}</span>
                                         </Label>
                                     ))}
 
                                     {/* Custom items added by user */}
-                                    {(customItems[currentSection.id] || []).map((item, idx) => (
+                                    {(customItems[currentStorageId] || []).map((item, idx) => (
                                         <div key={`custom-${idx}`} className="flex items-center space-x-3 p-4 rounded-2xl border bg-indigo-50/30 border-ring group">
                                             <input
                                                 type="checkbox"
-                                                checked={!!(formData[`check_${currentSection.id}_custom_${idx}`])}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, [`check_${currentSection.id}_custom_${idx}`]: e.target.checked }))}
+                                                checked={!!(formData[`check_${currentStorageId}_custom_${idx}`])}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, [`check_${currentStorageId}_custom_${idx}`]: e.target.checked }))}
                                                 className="w-5 h-5 text-link border-ring rounded-lg focus:ring-ring"
                                             />
                                             <span className="text-sm font-bold text-link flex-1">{item}</span>
                                             <Button variant="legacy" size="legacy"
-                                                onClick={() => handleRemoveCustomItem(currentSection.id, idx)}
+                                                onClick={() => handleRemoveCustomItem(currentStorageId, idx)}
                                                 className="text-muted-foreground hover:text-status-red opacity-0 group-hover:opacity-100 transition-all"
                                             >
                                                 <Trash2 size={14} />
@@ -544,7 +658,7 @@ const CreateCase = () => {
                                     ))}
 
                                     <Button variant="legacy" size="legacy"
-                                        onClick={() => handleAddCustomItem(currentSection.id)}
+                                        onClick={() => handleAddCustomItem(currentStorageId)}
                                         className="flex items-center justify-center space-x-2 p-4 rounded-2xl border border-border border-dashed hover:bg-background hover:border-ring transition-all text-muted-foreground hover:text-link"
                                     >
                                         <Plus size={18} />
@@ -610,7 +724,7 @@ const CreateCase = () => {
                         {currentSection && !['checklist', 'scoring'].includes(currentSection.type) && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <SectionInfo>{currentSection.description}</SectionInfo>
-                                {currentSection.fields?.map((field, idx) => (
+                                {currentSection.fields?.filter(field => field.group !== 'expectativas' && (field.group !== 'proceso' || formData.procesoIniciado === 'Sí')).map((field, idx) => (
                                     <DynamicField
                                         key={`${currentSection.id}-${field.name}-${idx}`}
                                         field={field}
@@ -619,6 +733,16 @@ const CreateCase = () => {
                                         studioUsers={studioUsers}
                                     />
                                 ))}
+                                {currentSection.id === 'datos-consultante' && (
+                                    <fieldset className="col-span-full rounded-lg border border-border bg-background p-4">
+                                        <legend className="px-2 text-sm font-semibold text-foreground">Expectativas del cliente</legend>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {currentSection.fields?.filter(field => field.group === 'expectativas').map(field => (
+                                                <DynamicField key={field.name} field={field} formData={formData} handleChange={handleChange} />
+                                            ))}
+                                        </div>
+                                    </fieldset>
+                                )}
                                 {usersError && <p role="alert" className="col-span-full text-sm text-status-red">{usersError}</p>}
                             </div>
                         )}
@@ -666,7 +790,7 @@ const CreateCase = () => {
                     <span>Siguiente</span>
                     <ArrowRight size={18} />
                 </Button>
-            </div>
+            </div></>}
         </div>
     );
 };

@@ -1,6 +1,8 @@
 import prisma from '../utils/prismaClient.js';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
+import { STUDIO_STATUS } from '../utils/studioAccess.js';
+import { issueAccountLink } from '../utils/accountAccessLinks.js';
 
 export const getStudios = async (req, res) => {
     try {
@@ -28,10 +30,8 @@ export const createStudio = async (req, res) => {
             return res.status(400).json({ message: 'Ya existe un estudio con ese CUIT' });
         }
 
-        // Generate a cryptographically random temporary password (never hardcoded)
-        const tempPassword = randomBytes(12).toString('base64url');
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(tempPassword, salt);
+        // An invited account receives its first usable password when it redeems the link.
+        const hashedPassword = await bcrypt.hash(randomBytes(32).toString('base64url'), 10);
 
         const result = await prisma.$transaction(async (tx) => {
             const newStudio = await tx.studio.create({
@@ -54,12 +54,11 @@ export const createStudio = async (req, res) => {
                 }
             });
 
-            return { studio: newStudio, adminEmail: newAdmin.email };
+            const invitation = await issueAccountLink(tx, newAdmin, 'INVITATION');
+            return { studio: newStudio, adminEmail: newAdmin.email, invitation };
         });
 
-        // Return temp password once in the response — SUPER_ADMIN must relay it securely.
-        // It is not persisted in plaintext and will not appear in future responses.
-        res.status(201).json({ ...result, tempPassword });
+        res.set('Cache-Control', 'no-store').status(201).json(result);
     } catch (error) {
         console.error('[createStudio]', error.message);
         res.status(400).json({ message: 'Error al crear el estudio' });
@@ -84,15 +83,24 @@ export const getStudioById = async (req, res) => {
 export const updateStudioStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status } = req.body;
-
-        const updatedStudio = await prisma.studio.update({
-            where: { id },
-            data: { status }
+        const status = req.body?.status;
+        if (!Object.values(STUDIO_STATUS).includes(status)) {
+            return res.status(400).json({ message: 'Elegí un estado válido para el estudio.' });
+        }
+        const updatedStudio = await prisma.$transaction(async tx => {
+            const current = await tx.studio.update({ where: { id }, data: { status } });
+            if (status === STUDIO_STATUS.SUSPENDED) {
+                await tx.user.updateMany({
+                    where: { studioId: id, deletedAt: null },
+                    data: { sessionVersion: { increment: 1 } },
+                });
+            }
+            return current;
         });
 
         res.json(updatedStudio);
     } catch (error) {
+        if (error.code === 'P2025') return res.status(404).json({ message: 'Estudio no encontrado.' });
         res.status(500).json({ message: 'Server error al archivar el estudio' });
     }
 };

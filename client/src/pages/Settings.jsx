@@ -1,3 +1,4 @@
+import { organizeAdmissionSections } from '../utils/caseAdmissionSections';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Label } from '../components/ui/label';
@@ -14,7 +15,8 @@ import {
 import { useToast } from '../context/ToastContext';
 
 const readConfig = data => {
-    if (!data || !Array.isArray(data.sections) || !data.sections.every(section =>
+    if (!data || !Number.isInteger(data.version) || data.version < 0 || typeof data.canEdit !== 'boolean'
+        || !Array.isArray(data.sections) || !data.sections.every(section =>
         section && typeof section.id === 'string' && section.id.length > 0 &&
         typeof section.title === 'string' && typeof section.type === 'string' &&
         typeof section.enabled === 'boolean' &&
@@ -25,7 +27,7 @@ const readConfig = data => {
     ) || new Set(data.sections.map(section => section.id)).size !== data.sections.length) {
         throw new Error('Respuesta de configuración inválida');
     }
-    return data;
+    return { ...data, sections: organizeAdmissionSections(data.sections) };
 };
 
 const Settings = () => {
@@ -45,7 +47,10 @@ const Settings = () => {
                 headers: { Authorization: `Bearer ${token}` }, signal,
             });
             if (signal?.aborted) return;
-            const config = readConfig(data);
+            // An older server can still serve the form during a staged update.
+            const config = readConfig(data?.version === undefined && data?.canEdit === undefined
+                ? { ...data, version: 0, canEdit: false }
+                : data);
             setConfig(config);
             setActiveSectionId(config.sections[0]?.id ?? null);
         } catch (error) {
@@ -64,38 +69,39 @@ const Settings = () => {
     }, [fetchConfig]);
 
     const handleSave = async () => {
-        if (!config || busy) return;
+        if (!config?.canEdit || busy) return;
         setBusy(true);
         try {
             const token = localStorage.getItem('lyp_token');
-            await axios.put(api.formConfig.base, { sections: config.sections }, {
+            const { data } = await axios.put(api.formConfig.update, { sections: config.sections, version: config.version }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            setConfig(readConfig(data));
             showToast('Configuración guardada con éxito', 'success');
         } catch (error) {
             console.error('Error saving config:', error);
-            showToast('Error al guardar', 'error');
+            showToast(error.response?.data?.message || 'Error al guardar', 'error');
         } finally {
             setBusy(false);
         }
     };
 
     const handleReset = async () => {
-        if (busy) return;
+        if (!config?.canEdit || busy) return;
         if (!window.confirm('¿Estás seguro de resetear a los valores por defecto? Se perderán los cambios personalizados.')) return;
         setBusy(true);
         try {
             const token = localStorage.getItem('lyp_token');
-            const { data } = await axios.post(`${api.formConfig.base}/reset`, {}, {
+            const { data } = await axios.post(api.formConfig.reset, { version: config.version }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            const config = readConfig(data);
-            setConfig(config);
-            setActiveSectionId(current => config.sections.some(section => section.id === current)
-                ? current : config.sections[0]?.id ?? null);
+            const restored = readConfig(data);
+            setConfig(restored);
+            setActiveSectionId(current => restored.sections.some(section => section.id === current)
+                ? current : restored.sections[0]?.id ?? null);
             showToast('Configuración reseteada', 'success');
         } catch (error) {
-            showToast('Error al resetear', 'error');
+            showToast(error.response?.data?.message || 'Error al resetear', 'error');
         } finally {
             setBusy(false);
         }
@@ -157,9 +163,9 @@ const Settings = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
                     <h2 className="text-3xl font-black text-foreground tracking-tighter">Configuración del Sistema</h2>
-                    <p className="text-muted-foreground font-medium">Gestiona los 13 módulos de admisión y sus contenidos.</p>
+                    <p className="text-muted-foreground font-medium">{config.canEdit ? 'Personalizá los módulos del formulario de admisión.' : 'Podés consultar los módulos de admisión. Tu perfil tiene acceso de solo lectura.'}</p>
                 </div>
-                <div className="flex items-center space-x-3">
+                {config.canEdit && <div className="flex items-center space-x-3">
                     <Button variant="legacy" size="legacy"
                         onClick={handleReset}
                         disabled={busy}
@@ -176,7 +182,7 @@ const Settings = () => {
                         <Save size={18} />
                         <span>Guardar Cambios</span>
                     </Button>
-                </div>
+                </div>}
             </div>
 
             {config.sections.length === 0 && (
@@ -214,7 +220,7 @@ const Settings = () => {
                     <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100 flex items-start space-x-3">
                         <AlertCircle className="text-status-amber flex-shrink-0" size={18} />
                         <p className="text-xs text-status-amber font-medium leading-relaxed">
-                            Los cambios realizados aquí afectarán a todos los nuevos casos creados a partir de ahora.
+                            El formulario se comparte con los integrantes de tu estudio. Si trabajás de forma independiente, se aplica a tu cuenta.
                         </p>
                     </div>
                 </div>
@@ -232,6 +238,7 @@ const Settings = () => {
                                         </span>
                                         <Button variant="legacy" size="legacy"
                                             onClick={() => updateSection(activeSection.id, 'enabled', !activeSection.enabled)}
+                                            disabled={!config.canEdit}
                                             className="text-xs font-bold text-link hover:underline"
                                         >
                                             Cambiar estado
@@ -243,6 +250,7 @@ const Settings = () => {
                                         <Label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">Descripción del Módulo</Label>
                                         <Input
                                             type="text"
+                                            readOnly={!config.canEdit}
                                             value={activeSection.description || ''}
                                             onChange={(e) => updateSection(activeSection.id, 'description', e.target.value)}
                                             className="w-full bg-card border border-border rounded-xl px-4 py-2.5 text-sm font-semibold text-foreground focus:ring-2 focus:ring-ring focus:border-ring transition-all"
@@ -258,6 +266,7 @@ const Settings = () => {
                                             <Label className="block text-[10px] font-black text-muted-foreground uppercase tracking-widest">Elementos del Checklist</Label>
                                             <Button variant="legacy" size="legacy"
                                                 onClick={() => handleAddItem(activeSection.id)}
+                                                disabled={!config.canEdit}
                                                 className="flex items-center space-x-1.5 text-link hover:text-link font-bold text-xs"
                                             >
                                                 <Plus size={14} />
@@ -270,6 +279,7 @@ const Settings = () => {
                                                     <span className="text-sm font-semibold text-foreground">{item}</span>
                                                     <Button variant="legacy" size="legacy"
                                                         onClick={() => handleRemoveItem(activeSection.id, idx)}
+                                                        disabled={!config.canEdit}
                                                         className="text-muted-foreground hover:text-status-red transition-colors opacity-0 group-hover:opacity-100"
                                                     >
                                                         <Trash2 size={16} />

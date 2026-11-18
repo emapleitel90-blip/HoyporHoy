@@ -1,38 +1,44 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runFileOptimizer } from '../skills/fileOptimizer.js';
-import fs from 'fs';
-import path from 'path';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
-describe('skill_optimizador_archivos', () => {
-    it('Debe devolver un reporte válido al ejecutar la limpieza básica', async () => {
-        const report = await runFileOptimizer();
-        expect(report).toBeDefined();
-        expect(report.timestamp).toBeDefined();
-        expect(typeof report.espacioLiberadoMB).toBe('number');
-        expect(Array.isArray(report.archivosBorrados)).toBe(true);
-        expect(Array.isArray(report.incongruenciasDetectadas)).toBe(true);
+let directory;
+beforeEach(() => { directory = mkdtempSync(path.join(tmpdir(), 'hoyporhoy-optimizer-')); });
+afterEach(() => {
+    if (path.dirname(path.resolve(directory)) !== path.resolve(tmpdir()) || !path.basename(directory).startsWith('hoyporhoy-optimizer-')) {
+        throw new Error('Unexpected optimizer fixture');
+    }
+    rmSync(directory, { recursive: true, force: true });
+});
+
+describe('Optimizador sobre archivos temporales', () => {
+    it('rechaza una limpieza de prueba sin directorio explícito antes de tocar archivos', async () => {
+        await expect(runFileOptimizer()).rejects.toThrow('directorio temporal explícito');
+    });
+    it('elimina temporales, conserva archivos de trabajo y escribe el reporte dentro de la prueba', async () => {
+        for (const folder of ['tmp', 'documents', 'node_modules', '.git', '.husky']) mkdirSync(path.join(directory, folder));
+        const removed = ['npm-debug.log', 'tmp/disposable.txt', 'documents/trace.log'];
+        const preserved = ['documents/case.pdf', 'server.log', 'node_modules/trace.log', '.git/trace.log', '.husky/trace.log', '.env', '.env.example'];
+        for (const file of [...removed, ...preserved]) writeFileSync(path.join(directory, file), 'fixture content');
+
+        const report = await runFileOptimizer({ projectRoot: directory });
+
+        expect(report.archivosBorrados.sort()).toEqual(['npm-debug.log', 'tmp', 'documents/trace.log'].map(file => path.join(directory, file)).sort());
+        for (const file of removed) expect(existsSync(path.join(directory, file))).toBe(false);
+        for (const file of preserved) expect(readFileSync(path.join(directory, file), 'utf8')).toBe('fixture content');
+        expect(report.incongruenciasDetectadas).toEqual([]);
+        expect(Number.isFinite(Date.parse(report.timestamp))).toBe(true);
+        expect(JSON.parse(readFileSync(path.join(directory, 'cleanup_report.json'), 'utf8'))).toEqual(report);
     });
 
-    it('El reporte es clave para que el analista-tester sepa si hubo contaminación ambiental', async () => {
-        // En lugar de mockear, creamos un archivo real en la raíz del backend (o lyp-app)
-        const projectRoot = path.resolve(__dirname, '../../../');
-        const testEnvPath = path.join(projectRoot, '.env.tester.incongruente');
-        
-        // Escribimos el archivo incongruente
-        fs.writeFileSync(testEnvPath, 'TEST=1');
-
-        try {
-            const report = await runFileOptimizer();
-            expect(report.incongruenciasDetectadas.length).toBeGreaterThan(0);
-            
-            // Verificamos que reportó el archivo
-            const detectoElArchivo = report.incongruenciasDetectadas.some(msg => msg.includes('.env.tester.incongruente'));
-            expect(detectoElArchivo).toBe(true);
-        } finally {
-            // Limpiamos siempre
-            if (fs.existsSync(testEnvPath)) {
-                fs.unlinkSync(testEnvPath);
-            }
-        }
+    it('informa el archivo de ambiente adicional y conserva su contenido', async () => {
+        const extra = path.join(directory, '.env.tester.incongruente');
+        writeFileSync(extra, 'TEST=1');
+        const report = await runFileOptimizer({ projectRoot: directory });
+        expect(report.incongruenciasDetectadas).toEqual([expect.stringContaining(extra)]);
+        expect(report.archivosBorrados).toEqual([]);
+        expect(readFileSync(extra, 'utf8')).toBe('TEST=1');
     });
 });

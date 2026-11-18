@@ -7,5 +7,6 @@ export default defineConfig({
         environment: 'jsdom',
         include: ['src/tests/**/*.test.{js,jsx}'],
         clearMocks: true,
+        maxWorkers: 1,
     },
 });

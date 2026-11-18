@@ -37,9 +37,9 @@ const Login = () => {
         setLoading(true);
         try {
             await login(email, password);
-            navigate('/dashboard');
+            navigate('/mi-jornada');
         } catch (err) {
-            setError('Credenciales inválidas. Verifique su email y contraseña.');
+            setError(err.message || 'No se pudo iniciar sesión. Intentá nuevamente.');
         } finally {
             setLoading(false);
         }

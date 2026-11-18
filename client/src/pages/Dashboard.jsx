@@ -51,47 +51,11 @@ const Dashboard = () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(api.cases.list, {
+            const response = await fetch(api.cases.stats, {
                 headers: { 'Authorization': 'Bearer ' + getToken() }
             });
-            if (!response.ok) throw new Error('Error al cargar casos');
-            const data = await response.json();
-            const cases = Array.isArray(data) ? data : (data.value || []);
-
-            const total = cases.length;
-            const open = cases.filter(c => c.status === 'OPEN').length;
-            const closed = cases.filter(c => c.status === 'CLOSED').length;
-            const pending = cases.filter(c => c.status === 'PENDING').length;
-            const urgent = cases.filter(c => c.priority === 'HIGH' || (c.score && c.score > 70)).length;
-
-            const statusCounts = {};
-            cases.forEach(c => {
-                const s = c.status || 'OPEN';
-                statusCounts[s] = (statusCounts[s] || 0) + 1;
-            });
-            const byStatus = Object.keys(statusCounts).map(name => ({ name, count: statusCounts[name] }));
-
-            const fueroCounts = {};
-            cases.forEach(c => {
-                if (c.fuero) {
-                    fueroCounts[c.fuero] = (fueroCounts[c.fuero] || 0) + 1;
-                }
-            });
-            const byFuero = Object.keys(fueroCounts).map(name => ({ name, value: fueroCounts[name] }));
-
-            const recent = [...cases]
-                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                .slice(0, 5)
-                .map(c => ({
-                    id: c.id,
-                    clientName: c.clientName,
-                    title: c.title,
-                    fuero: c.fuero,
-                    status: c.status,
-                    createdAt: c.createdAt
-                }));
-
-            setStats({ total, open, closed, pending, urgent, byStatus, byFuero, recent });
+            if (!response.ok) throw new Error('Error al cargar estadísticas');
+            setStats(await response.json());
         } catch (err) {
             console.error('Error cargando estadísticas:', err);
             setError('No se pudieron cargar las estadísticas.');
@@ -184,7 +148,7 @@ const Dashboard = () => {
                     color="bg-amber-500"
                 />
                 <StatCard
-                    title="Urgentes"
+                    title="Urgentes abiertos"
                     value={safeStats.urgent ?? 0}
                     icon={AlertTriangle}
                     color="bg-red-500"

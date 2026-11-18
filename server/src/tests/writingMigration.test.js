@@ -8,7 +8,10 @@ import path from 'node:path';
 describe('Migración de escritos sobre expedientes y pagos anteriores', () => {
     it('agrega versiones y sus restricciones conservando cada fila anterior', async () => {
         const directory = mkdtempSync(path.join(tmpdir(), 'lyp-writing-migration-'));
-        const url = 'file:' + path.join(directory, 'test.db').replaceAll('\\', '/');
+        // PRAGMA foreign_keys is connection-local. This fixture temporarily disables
+        // it while the referenced parent table is absent; use the same connection
+        // when enabling it again and checking the foreign-key constraints.
+        const url = 'file:' + path.join(directory, 'test.db').replaceAll('\\', '/') + '?connection_limit=1';
         const db = new PrismaClient({ datasources: { db: { url } } });
         const quote = value => '"' + value.replaceAll('"', '""') + '"';
         try {

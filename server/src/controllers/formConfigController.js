@@ -1,4 +1,6 @@
 import prisma from '../utils/prismaClient.js';
+import { AppError } from '../middleware/errorMiddleware.js';
+import { validFormSections } from '../utils/formConfigValidation.js';
 
 const DEFAULT_SECTIONS = [
     {
@@ -9,7 +11,7 @@ const DEFAULT_SECTIONS = [
         type: 'standard',
         fields: [
             { name: 'clientName', label: 'Nombre y Apellido completo', type: 'text', required: true },
-            { name: 'dni', label: 'DNI / CUIT', type: 'text', required: true },
+            { name: 'dni', label: 'DNI / CUIT / CUIL', type: 'text', required: true },
             { name: 'email', label: 'Email', type: 'email' },
             { name: 'phone', label: 'Teléfono', type: 'text' },
             { name: 'address', label: 'Domicilio', type: 'text', fullWidth: true },
@@ -48,8 +50,7 @@ const DEFAULT_SECTIONS = [
         enabled: true,
         type: 'standard',
         fields: [
-            { name: 'urgencia', label: 'Nivel de Urgencia', type: 'select', options: ['Baja', 'Media', 'Alta', 'Urgente (Plazos corriendo)'] },
-            { name: 'fechaPrescripcion', label: 'Fecha de Prescripción', type: 'date' },
+            { name: 'fechaPrescripcion', label: 'Fecha estimada de prescripción', type: 'date' },
             { name: 'proximaAudiencia', label: 'Próxima Audiencia', type: 'date' },
         ]
     },
@@ -148,52 +149,72 @@ const DEFAULT_SECTIONS = [
     }
 ];
 
-export const getFormConfig = async (req, res, next) => {
+const scopeFor = user => user.studioId ? `studio:${user.studioId}` : `user:${user.id}`;
+
+function canEdit(user) {
+    return user.studioId
+        ? ['ADMIN', 'SUPER_ADMIN'].includes(user.role)
+        : ['ADMIN', 'SUPER_ADMIN', 'LAWYER'].includes(user.role);
+}
+
+function readSections(config) {
+    if (!config) return null;
     try {
-        let config = await prisma.formConfig.findUnique({ where: { scope: 'global' } });
-        
-        if (!config) {
-            config = await prisma.formConfig.create({
-                data: {
-                    scope: 'global',
-                    sections: JSON.stringify(DEFAULT_SECTIONS)
-                }
-            });
+        const sections = JSON.parse(config.sections);
+        return validFormSections(sections) ? sections : null;
+    } catch {
+        return null;
+    }
+}
+
+function sendConfig(res, user, version, sections) {
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ sections, version, canEdit: canEdit(user) });
+}
+
+export async function getFormConfig(req, res, next) {
+    try {
+        const config = await prisma.formConfig.findUnique({ where: { scope: scopeFor(req.user) } });
+        let sections = readSections(config);
+        if (!sections) {
+            const legacyTemplate = await prisma.formConfig.findUnique({ where: { scope: 'global' } });
+            sections = readSections(legacyTemplate) ?? DEFAULT_SECTIONS;
         }
-        
-        res.json({ ...config, sections: JSON.parse(config.sections) });
+        sendConfig(res, req.user, config?.version ?? 0, sections);
     } catch (error) {
-        console.error('Error fetching form config:', error);
         next(error);
     }
-};
+}
 
-export const updateFormConfig = async (req, res, next) => {
+async function saveConfig(req, res, next, reset = false) {
     try {
-        const { sections } = req.body;
-        const config = await prisma.formConfig.upsert({
-            where: { scope: 'global' },
-            update: { sections: JSON.stringify(sections) },
-            create: { scope: 'global', sections: JSON.stringify(sections) }
-        });
-        res.json({ ...config, sections: JSON.parse(config.sections) });
+        if (!canEdit(req.user)) {
+            throw new AppError('Tu perfil solo puede consultar la configuración de admisión.', 403);
+        }
+        const version = req.body?.version;
+        if (!Number.isSafeInteger(version) || version < 0 || version >= 2147483647) {
+            throw new AppError('Recargá la configuración antes de guardar.', 400);
+        }
+        const sections = reset ? DEFAULT_SECTIONS : req.body?.sections;
+        if (!validFormSections(sections)) {
+            throw new AppError('Revisá la estructura del formulario. Debe quedar al menos un módulo habilitado.', 400);
+        }
+        const scope = scopeFor(req.user);
+        const storedSections = JSON.stringify(sections);
+        const config = version === 0
+            ? await prisma.formConfig.create({ data: { scope, sections: storedSections } })
+            : await prisma.formConfig.update({
+                where: { scope, version },
+                data: { sections: storedSections, version: { increment: 1 } },
+            });
+        sendConfig(res, req.user, config.version, sections);
     } catch (error) {
-        console.error('Error updating form config:', error);
+        if (['P2002', 'P2025'].includes(error.code)) {
+            return next(new AppError('La configuración cambió desde que la abriste. Recargala antes de guardar.', 409));
+        }
         next(error);
     }
-};
+}
 
-export const resetFormConfig = async (req, res, next) => {
-    try {
-        const config = await prisma.formConfig.upsert({
-            where: { scope: 'global' },
-            update: { sections: JSON.stringify(DEFAULT_SECTIONS) },
-            create: { scope: 'global', sections: JSON.stringify(DEFAULT_SECTIONS) }
-        });
-        res.json({ ...config, sections: JSON.parse(config.sections) });
-    } catch (error) {
-        console.error('Error resetting form config:', error);
-        next(error);
-    }
-};
-
+export const updateFormConfig = (req, res, next) => saveConfig(req, res, next);
+export const resetFormConfig = (req, res, next) => saveConfig(req, res, next, true);

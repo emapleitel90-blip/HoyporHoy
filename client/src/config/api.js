@@ -4,10 +4,20 @@
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export const api = {
+    agenda: {
+        list: `${API_URL}/api/agenda`,
+        options: `${API_URL}/api/agenda/options`,
+        createTask: `${API_URL}/api/agenda/tasks`,
+        updateTask: id => `${API_URL}/api/agenda/tasks/${id}`,
+    },
     auth: {
         login: `${API_URL}/api/auth/login`,
+        recoveryLinks: `${API_URL}/api/auth/recovery-links`,
+        redeemAccountLink: `${API_URL}/api/auth/account-links/redeem`,
     },
     cases: {
+        duplicates: `${API_URL}/api/cases/check-duplicates`,
+        nextAction: id => `${API_URL}/api/cases/${id}/next-action`,
         list: `${API_URL}/api/cases`,
         create: `${API_URL}/api/cases`,
         get: (id) => `${API_URL}/api/cases/${id}`,
@@ -45,6 +55,7 @@ export const api = {
         myDay: `${API_URL}/api/deadlines/my-day`,
         byCase: (id) => `${API_URL}/api/deadlines/case/${id}`,
         create: (id) => `${API_URL}/api/deadlines/case/${id}`,
+        confirmPrescription: (id) => `${API_URL}/api/deadlines/case/${id}/confirm-prescription`,
         update: (id) => `${API_URL}/api/deadlines/${id}`,
         delete: (id) => `${API_URL}/api/deadlines/${id}`,
     },

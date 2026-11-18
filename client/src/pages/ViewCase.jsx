@@ -1,10 +1,13 @@
+import { NextActionPanel } from '../components/NextActionPanel';
+import { CasePriorityBadge } from '../components/CasePriority';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Edit, ArrowLeft, CalendarDays, Scale, User, Briefcase, FileText, BarChart2, Clock, Download, Heart, Target, DollarSign, GraduationCap } from 'lucide-react';
+import { Edit, ArrowLeft, CalendarDays, Scale, User, FileText, Clock, Download, Heart, DollarSign, GraduationCap } from 'lucide-react';
 import { api } from '../config/api';
+import { useAuth } from '../context/AuthContext';
 import { DeadlinePanel } from '../components/DeadlinePanel';
 import { ExpensePanel } from '../components/ExpensePanel';
 import { CaseFilePanel } from '../components/CaseFilePanel';
@@ -14,6 +17,7 @@ import { FollowUpPanel } from '../components/FollowUpPanel';
 import { FeePanel } from '../components/FeePanel';
 import { WrittenDocumentsPanel } from '../components/WrittenDocumentsPanel';
 import { CaseProgressSummary } from '../components/CaseProgressSummary';
+import { formatLegalDate } from '../utils/agendaDates';
 
 const STATUS_LABELS = {
     OPEN: 'Abierto', CLOSED: 'Cerrado', IN_REVIEW: 'En Revisión',
@@ -70,39 +74,10 @@ const ScorePanel = ({ score }) => {
     );
 };
 
-const FodaPanel = ({ details }) => {
-    const items = [
-        { key: 'fodaFortalezas', label: 'Fortalezas', color: 'border-green-200 bg-green-50', titleColor: 'text-status-green', badge: 'bg-green-600' },
-        { key: 'fodaOportunidades', label: 'Oportunidades', color: 'border-ring bg-blue-50', titleColor: 'text-link', badge: 'bg-blue-600' },
-        { key: 'fodaDebilidades', label: 'Debilidades', color: 'border-yellow-200 bg-yellow-50', titleColor: 'text-status-yellow', badge: 'bg-yellow-600' },
-        { key: 'fodaAmenazas', label: 'Amenazas', color: 'border-red-200 bg-red-50', titleColor: 'text-status-red', badge: 'bg-red-600' },
-    ];
-    if (!items.some(i => details[i.key])) return null;
-    return (
-        <Card className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-            <div className="px-6 py-4 border-b border-border bg-background flex items-center gap-2">
-                <BarChart2 className="w-4 h-4 text-link" />
-                <h3 className="text-base font-semibold text-foreground">Análisis FODA</h3>
-            </div>
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {items.map(item => details[item.key] && (
-                    <div key={item.key} className={`border rounded-xl p-4 ${item.color}`}>
-                        <h4 className={`font-bold mb-2 flex items-center gap-2 text-sm ${item.titleColor}`}>
-                            <span className={`w-5 h-5 ${item.badge} text-white rounded text-xs flex items-center justify-center font-bold`}>
-                                {item.label.charAt(0)}
-                            </span>
-                            {item.label}
-                        </h4>
-                        <p className="text-sm text-foreground whitespace-pre-wrap">{details[item.key]}</p>
-                    </div>
-                ))}
-            </div>
-        </Card>
-    );
-};
-
 const ViewCase = () => {
     const { id } = useParams();
+    const role = useAuth()?.user?.role;
+    const canConfirmPrescription = ['ADMIN', 'LAWYER', 'SUPER_ADMIN'].includes(role);
     const [caseItem, setCaseItem] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -216,12 +191,16 @@ const ViewCase = () => {
                     </Link>
                     <div>
                         <h2 className="text-2xl font-bold text-foreground">{caseItem.clientName || caseItem.title}</h2>
+                        {caseItem.clientName && caseItem.title && caseItem.title !== `Caso de ${caseItem.clientName}` && (
+                            <p className="text-sm text-foreground">{caseItem.title}</p>
+                        )}
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <span className="text-sm text-muted-foreground">{caseItem.caseNumber}</span>
                             {caseItem.fuero && <span className="px-2 py-0.5 text-xs bg-indigo-100 text-link rounded-full font-medium">{caseItem.fuero}</span>}
                             <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${STATUS_COLORS[caseItem.status] || 'bg-muted text-foreground'}`}>
                                 {STATUS_LABELS[caseItem.status] || caseItem.status}
                             </span>
+                            <CasePriorityBadge priority={caseItem.priority} showLabel />
                         </div>
                     </div>
                 </div>
@@ -237,22 +216,80 @@ const ViewCase = () => {
                 </div>
             </div>
 
+            <NextActionPanel caseId={caseItem.id} />
+
             {/* Score Banner */}
             <CaseProgressSummary caseId={caseItem.id} files={caseItem.files||[]} refreshVersion={summaryVersion}/>
             {caseItem.score > 0 && <ScorePanel score={caseItem.score} />}
 
             {/* 1. Datos del Consultante */}
-            <Section icon={User} title="Datos del Consultante">
+            <Section icon={User} title="1. Datos del Consultante">
+                <InfoRow label="¿El consultante firmó un poder?" value={({ Firmado: 'Sí', 'No firmado': 'No' })[details.poderFirmado] || details.poderFirmado || 'Sin registrar'} />
+                    <InfoRow label="¿Se inició un proceso o se realizó una actuación?" value={details.procesoIniciado || 'Sin registrar'} />
+                    {details.procesoIniciado === 'Sí' && (
+                        <>
+                            <InfoRow label="Actuación realizada" value={details.actuacionProcesal} />
+                            <InfoRow label="Fecha de la actuación" value={formatLegalDate(details.fechaActuacionProcesal)} />
+                            <div className="col-span-full"><InfoRow label="Detalle de la actuación" value={details.detalleActuacionProcesal} /></div>
+                        </>
+                    )}
                 <InfoRow label="Cliente" value={caseItem.clientName} />
-                <InfoRow label="DNI / CUIT" value={details.dni} />
-                <InfoRow label="Fecha de nacimiento" value={details.birthDate ? new Date(details.birthDate).toLocaleDateString('es-AR') : null} />
+                <InfoRow label="DNI / CUIT / CUIL" value={details.dni} />
+                <InfoRow label="Fecha de nacimiento" value={formatLegalDate(details.birthDate)} />
                 <InfoRow label="Email" value={details.email} />
                 <InfoRow label="Teléfono" value={details.phone} />
                 <InfoRow label="Domicilio" value={details.address} />
                 <InfoRow label="Estado civil" value={details.estadoCivil} />
                 <InfoRow label="Hijos a cargo" value={details.hijosACargo} />
                 <InfoRow label="Canal de consulta" value={details.canalConsulta} />
+                <div className="col-span-full rounded-lg border border-border bg-background p-4 space-y-3">
+                    <h4 className="text-sm font-semibold">Expectativas del cliente</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <InfoRow label="Resultado esperado" value={details.resultadoEsperado || 'Sin registrar'} />
+                        <InfoRow label="Disposición a negociar" value={details.disposicionNegociar} />
+                        <InfoRow label="Plazo esperado" value={details.plazoEsperado} />
+                        <InfoRow label="Expectativa económica" value={details.expectativaEconomica} />
+                        <InfoRow label="Observaciones" value={details.notasExpectativas} />
+                    </div>
+                </div>
             </Section>
+
+            {/* 12. Línea de Tiempo */}
+            {hitosFecha.length > 0 && (
+                <Card className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+                    <div className="px-6 py-4 border-b border-border bg-background flex items-center gap-2">
+                        <CalendarDays className="w-4 h-4 text-link" />
+                        <h3 className="text-base font-semibold text-foreground">2. Línea de Tiempo</h3>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        {hitosFecha.map((hito, i) => (
+                            <div key={i} className="flex gap-4 items-start">
+                                <div className="flex flex-col items-center">
+                                    <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">{i + 1}</div>
+                                    {i < hitosFecha.length - 1 && <div className="w-0.5 h-full bg-secondary mt-1 flex-1 min-h-[20px]"></div>}
+                                </div>
+                                <div className="pb-4">
+                                    <p className="empty:hidden text-xs text-muted-foreground font-medium mb-1">{formatLegalDate(hito.fecha)}</p>
+                                    <p className="text-sm text-foreground">{hito.desc || '—'}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
+
+            {/* 8. Análisis Psicológico */}
+            {(details.estadoEmocional || details.nivelEstres || details.motivacionCliente || details.motivacion || details.redDeApoyo || details.observacionesPsico) && (
+                <Section icon={Heart} title="3. Análisis Psicológico del Consultante">
+                    <InfoRow label="Estado emocional" value={details.estadoEmocional} />
+                    <InfoRow label="Nivel de estrés" value={details.nivelEstres} />
+                    <InfoRow label="Motivación principal" value={details.motivacionCliente || details.motivacion} />
+                    <InfoRow label="Red de apoyo" value={details.redDeApoyo} />
+                    <div className="col-span-full">
+                        <InfoRow label="Observaciones del entrevistador" value={details.observacionesPsico} />
+                    </div>
+                </Section>
+            )}
 
             {/* 2. Perfil Socioeconómico */}
             {(details.situacionLaboral || details.ingresosMensuales || details.obraSocial || details.nivelEducativo) && (
@@ -288,14 +325,17 @@ const ViewCase = () => {
             )}
 
             {/* 4. Plazos y Urgencias */}
-            {(details.nivelUrgencia || details.fechaPrescripcion || details.proximaAudiencia) && (
+            {(details.motivoUrgencia || details.fechaPrescripcion
+                || details.proximaAudiencia || details.fechaHecho || details.plazoContestacion) && (
                 <Section icon={Clock} title="Plazos y Urgencias">
-                    <InfoRow label="Nivel de urgencia" value={details.nivelUrgencia} />
                     <InfoRow label="Motivo de urgencia" value={details.motivoUrgencia} />
-                    <InfoRow label="Prescripción estimada" value={details.fechaPrescripcion ? new Date(details.fechaPrescripcion).toLocaleDateString('es-AR') : null} />
-                    <InfoRow label="Próxima audiencia" value={details.proximaAudiencia ? new Date(details.proximaAudiencia).toLocaleDateString('es-AR') : null} />
-                    <InfoRow label="Inicio del hecho" value={details.fechaHecho ? new Date(details.fechaHecho).toLocaleDateString('es-AR') : null} />
-                    <InfoRow label="Plazo de contestación" value={details.plazoContestacion ? new Date(details.plazoContestacion).toLocaleDateString('es-AR') : null} />
+                    <div>
+                        <InfoRow label="Prescripción estimada" value={formatLegalDate(details.fechaPrescripcion)} />
+                        {formatLegalDate(details.fechaPrescripcion) && <a href="#agenda-vencimientos" className="mt-1 inline-block text-sm text-link underline">Ver en Agenda de Vencimientos</a>}
+                    </div>
+                    <InfoRow label="Próxima audiencia" value={formatLegalDate(details.proximaAudiencia)} />
+                    <InfoRow label="Inicio del hecho" value={formatLegalDate(details.fechaHecho)} />
+                    <InfoRow label="Plazo de contestación" value={formatLegalDate(details.plazoContestacion)} />
                     <div className="col-span-full">
                         <InfoRow label="Observaciones" value={details.notasPlazos} />
                     </div>
@@ -331,75 +371,6 @@ const ViewCase = () => {
                 </Card>
             )}
 
-            {/* 8. Análisis Psicológico */}
-            {(details.estadoEmocional || details.nivelEstres || details.motivacionCliente) && (
-                <Section icon={Heart} title="Análisis Psicológico del Consultante">
-                    <InfoRow label="Estado emocional" value={details.estadoEmocional} />
-                    <InfoRow label="Nivel de estrés" value={details.nivelEstres} />
-                    <InfoRow label="Motivación principal" value={details.motivacionCliente} />
-                    <InfoRow label="Red de apoyo" value={details.redDeApoyo} />
-                    <div className="col-span-full">
-                        <InfoRow label="Observaciones del entrevistador" value={details.observacionesPsico} />
-                    </div>
-                </Section>
-            )}
-
-            {/* 9. Expectativas del Cliente */}
-            {(details.resultadoEsperado || details.plazoEsperado || details.disposicionNegociar) && (
-                <Section icon={Target} title="Expectativas del Cliente">
-                    <div className="col-span-full">
-                        <InfoRow label="Resultado esperado" value={details.resultadoEsperado} />
-                    </div>
-                    <InfoRow label="Plazo esperado" value={details.plazoEsperado} />
-                    <InfoRow label="Disposición a negociar" value={details.disposicionNegociar} />
-                    <InfoRow label="Expectativa económica" value={details.expectativaEconomica} />
-                    <div className="col-span-full">
-                        <InfoRow label="Observaciones" value={details.notasExpectativas} />
-                    </div>
-                </Section>
-            )}
-
-            {/* 10. Evaluación Jurídica */}
-            {(details.viabilidadJuridica || details.estrategiaRecomendada || details.decisionAdmision) && (
-                <Section icon={Briefcase} title="Evaluación Jurídica LyP">
-                    <InfoRow label="Viabilidad" value={details.viabilidadJuridica} />
-                    <InfoRow label="Estrategia" value={details.estrategiaRecomendada} />
-                    <InfoRow label="Decisión de admisión" value={details.decisionAdmision} />
-                    <InfoRow label="Probabilidad de éxito (LyP)" value={details.probabilidadExitoLyP} />
-                    <InfoRow label="Complejidad percibida" value={details.complejidadLyP} />
-                    <div className="col-span-full">
-                        <InfoRow label="Detalle de estrategia" value={details.estrategiaDetalle} />
-                    </div>
-                </Section>
-            )}
-
-            {/* 11. FODA */}
-            <FodaPanel details={details} />
-
-            {/* 12. Línea de Tiempo */}
-            {hitosFecha.length > 0 && (
-                <Card className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-                    <div className="px-6 py-4 border-b border-border bg-background flex items-center gap-2">
-                        <CalendarDays className="w-4 h-4 text-link" />
-                        <h3 className="text-base font-semibold text-foreground">Línea de Tiempo</h3>
-                    </div>
-                    <div className="p-6 space-y-4">
-                        {hitosFecha.map((hito, i) => (
-                            <div key={i} className="flex gap-4 items-start">
-                                <div className="flex flex-col items-center">
-                                    <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">{i + 1}</div>
-                                    {i < hitosFecha.length - 1 && <div className="w-0.5 h-full bg-secondary mt-1 flex-1 min-h-[20px]"></div>}
-                                </div>
-                                <div className="pb-4">
-                                    {hito.fecha && <p className="text-xs text-muted-foreground font-medium mb-1">{new Date(hito.fecha).toLocaleDateString('es-AR')}</p>}
-                                    <p className="text-sm text-foreground">{hito.desc || '—'}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </Card>
-            )}
-
             {/* 13. Administrativo */}
             {(details.modalidadHonorarios || details.montoHonorarios) && (
                 <Section icon={DollarSign} title="Administrativo">
@@ -423,7 +394,7 @@ const ViewCase = () => {
             <TaskPanel caseItem={caseItem} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <DeadlinePanel caseId={caseItem.id} />
+                    <DeadlinePanel caseId={caseItem.id} prescriptionDate={details.fechaPrescripcion} canConfirmPrescription={canConfirmPrescription} />
                 </div>
                 <div>
                     <ExpensePanel caseId={caseItem.id} onReceiptSaved={file => setCaseItem(current => current?.id === file.caseId

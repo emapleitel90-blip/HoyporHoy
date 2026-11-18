@@ -63,6 +63,7 @@
 }
 
 .app-shell { background: hsl(var(--background)); }
+.legal-timeline-strip { scrollbar-width: thin; scrollbar-color: hsl(var(--border)) transparent; }
 .admission-score { --muted-foreground: 214 25% 80%; }
 .app-sidebar {
   background: #14263a; color: #f5f1e9; box-shadow: none;
